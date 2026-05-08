@@ -11,7 +11,14 @@ const CONSONANTS = "BDDFGHJKLMNPRSTV".split("");
 const COMMON_PAIRS = ["ER","EN","ET","ST","NG","AR","OR","AN","IN","RE","LE","NE","DE","TE","SE","ME"];
 
 const ROWS = 10, COLS = 10, TOTAL = ROWS * COLS;
-const TILE = 34, GAP = 4;
+const TILE = 26, GAP = 12;
+
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
 
 function genGrid() {
   const grid = new Array(TOTAL).fill(null);
@@ -21,8 +28,8 @@ function genGrid() {
   const consonantPool = [];
   while (vowelPool.length < TOTAL) vowelPool.push(...VOWELS);
   while (consonantPool.length < TOTAL) consonantPool.push(...CONSONANTS);
-  vowelPool.sort(() => Math.random() - 0.5);
-  consonantPool.sort(() => Math.random() - 0.5);
+  shuffle(vowelPool);
+  shuffle(consonantPool);
 
   let vi = 0, ci = 0;
   for (let r = 0; r < ROWS; r++) {
@@ -91,6 +98,7 @@ export default function WordGame() {
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState("ok");
   const [checking, setChecking] = useState(false);
+  const [pointerPos, setPointerPos] = useState(null);
   const dragging = useRef(false);
   const svgRef = useRef(null);
   const msgTimer = useRef(null);
@@ -142,12 +150,9 @@ export default function WordGame() {
   });
 
   const cellFromPoint = (x, y) => {
-    for (let i = 0; i < TOTAL; i++) {
-      const tx = (i % COLS) * (TILE + GAP);
-      const ty = Math.floor(i / COLS) * (TILE + GAP);
-      if (x >= tx && x <= tx + TILE && y >= ty && y <= ty + TILE) return i;
-    }
-    return -1;
+    const c = Math.floor(x / (TILE + GAP));
+    const r = Math.floor(y / (TILE + GAP));
+    return (c >= 0 && c < COLS && r >= 0 && r < ROWS) ? r * COLS + c : -1;
   };
 
   const getSVGPoint = (e) => {
@@ -164,33 +169,60 @@ export default function WordGame() {
   const onStart = (e) => {
     if (phase !== "play" || checking) return;
     e.preventDefault();
-    const { x, y } = getSVGPoint(e);
+    const p = getSVGPoint(e);
+    const { x, y } = p;
     const idx = cellFromPoint(x, y);
     if (idx < 0) return;
     dragging.current = true;
-    setPath([idx]);
+    const center = cellCenter(idx);
+    const dist = Math.hypot(x - center.x, y - center.y);
+    if (dist < (TILE + GAP) * 0.6) {
+      setPath([idx]);
+      setPointerPos(p);
+    }
   };
 
   const onMove = (e) => {
     if (!dragging.current || checking) return;
     e.preventDefault();
-    const { x, y } = getSVGPoint(e);
-    const idx = cellFromPoint(x, y);
-    if (idx < 0) return;
+    const p = getSVGPoint(e);
+    const { x, y } = p;
+    setPointerPos(p);
+
     setPath(prev => {
-      if (prev.includes(idx)) {
-        if (prev[prev.length - 2] === idx) return prev.slice(0, -1);
-        return prev;
+      if (prev.length === 0) return prev;
+      const lastIdx = prev[prev.length - 1];
+      const threshold = (TILE + GAP) * 0.45;
+
+      // Check for backtracking
+      if (prev.length > 1) {
+        const secondLast = prev[prev.length - 2];
+        const center = cellCenter(secondLast);
+        if (Math.hypot(x - center.x, y - center.y) < threshold) return prev.slice(0, -1);
       }
-      if (adj(prev[prev.length - 1], idx)) return [...prev, idx];
+
+      // Magnetic Snap: Look at all 8 neighbors of the last cell
+      const r = Math.floor(lastIdx / COLS), c = lastIdx % COLS;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+            const nIdx = nr * COLS + nc;
+            if (prev.includes(nIdx)) continue;
+            const center = cellCenter(nIdx);
+            if (Math.hypot(x - center.x, y - center.y) < threshold) return [...prev, nIdx];
+          }
+        }
+      }
       return prev;
     });
   };
 
-  const onEnd = (e) => {
+  const onEnd = () => {
     if (!dragging.current) return;
-    e.preventDefault();
     submitWord(path.slice());
+    setPointerPos(null);
   };
 
   const W = COLS * (TILE + GAP) - GAP;
@@ -284,8 +316,14 @@ export default function WordGame() {
             {path.length > 1 && path.slice(0, -1).map((idx, i) => {
               const a = cellCenter(idx), b = cellCenter(path[i + 1]);
               return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                stroke="#f5f0dc" strokeWidth={2.5} strokeLinecap="round" opacity={0.65} />;
+                stroke="#f5f0dc" strokeWidth={3.5} strokeLinecap="round" opacity={0.8} />;
             })}
+
+            {dragging.current && path.length > 0 && pointerPos && (
+              <line x1={cellCenter(path[path.length - 1]).x} y1={cellCenter(path[path.length - 1]).y}
+                x2={pointerPos.x} y2={pointerPos.y}
+                stroke="#f5f0dc" strokeWidth={2} strokeDasharray="4 2" opacity={0.4} />
+            )}
 
             {grid.map((letter, i) => {
               const x = (i % COLS) * (TILE + GAP), y = Math.floor(i / COLS) * (TILE + GAP);
@@ -293,7 +331,7 @@ export default function WordGame() {
               const canConnect = !inPath && path.length > 0 && adj(path[path.length - 1], i) && dragging.current;
               return (
                 <g key={i} transform={`translate(${x},${y})`}>
-                  <rect width={TILE} height={TILE} rx={5}
+                  <rect width={TILE} height={TILE} rx={8}
                     fill={isLast ? "#e0d9c0" : inPath ? "#c8c0a0" : canConnect ? "#3a3a2a" : "#2a2a2a"}
                     stroke={isLast ? "#f5f0dc" : inPath ? "#d4c88a" : canConnect ? "#555" : "#383838"}
                     strokeWidth={isLast ? 1.5 : 0.8} />

@@ -1,17 +1,22 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ordkobling
+
+A Norwegian word connection game built with Next.js 16.
+
+## Development Setup
+
+This project uses **fnm** for Node version management and **pnpm** for package management.
 
 ## Getting Started
 
-First, run the development server:
+1. Ensure the correct Node version is active:
+   ```bash
+   fnm use
+   ```
 
+2. Install dependencies and start the server:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
