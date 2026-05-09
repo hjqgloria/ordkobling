@@ -9,6 +9,85 @@ const LETTER_SCORES = {
 const VOWELS = "AEIOUYÆØÅ".split("");
 const CONSONANTS = "BDDFGHJKLMNPRSTV".split("");
 const COMMON_PAIRS = ["ER","EN","ET","ST","NG","AR","OR","AN","IN","RE","LE","NE","DE","TE","SE","ME"];
+// Placeholder for 500 long Norwegian words.
+// This list should be replaced with actual Norwegian words, ideally > 8 letters.
+const BONUS_WORDS = [
+  "ABSOLUTT", "ADRESSEBOK", "AKADEMISK", "AKTUATOR", "ALFABETISK", "ALLEREDE", "AMBULANSE", "ANALYSERE", "ANBEFALE", "ANLEDNING",
+  "ANMELDELSE", "ANNERLEDES", "ANSETTELSE", "ANSVARLIG", "ANTALLSORD", "APOTEKERE", "APPARATUR", "APPELLERE", "APPLIKASJON", "ARBEIDSPLASS",
+  "ARKITEKTUR", "ARRANGEMENT", "ARTIKULERE", "ASSISTENT", "ASSOSIASJON", "ATMOSFÆRE", "ATTRAKSJON", "AUTENTISK", "AUTOMATISK", "AVANSERT",
+  "AVDELING", "AVGJØRENDE", "AVSLUTNING", "BAKGRUNN", "BALANSERE", "BANKFORBINDELSE", "BARNEHAGE", "BEARBEIDE", "BEDRIFTSLEDER", "BEGRENSET",
+  "BEHANDLING", "BEHOVELIG", "BEKREFTELSE", "BELASTNING", "BELIGGENHET", "BENEVNELSE", "BEREGNING", "BESKRIVELSE", "BESTEMMELSE", "BESTILLING",
+  "BETRAKTNING", "BETYDNING", "BEVEGELSE", "BIBLIOTEK", "BIOLOGISK", "BLOMSTERBED", "BOKSTAVELIG", "BRUKERVENNLIG", "BYGGEPLASS", "BYRÅKRATI",
+  "BÆREKRAFTIG", "DAGLIGVARE", "DATAANALYSE", "DEBATTERE", "DEFINISJON", "DEMOKRATISK", "DEMONSTRERE", "DEPARTEMENT", "DESIGNEREN", "DETALJERT",
+  "DIAGNOSTISK", "DIFFERENSIERE", "DIGITALISERING", "DIREKTØREN", "DISIPLINERT", "DISKUSJON", "DISTRIBUSJON", "DOKUMENTASJON", "DOMINERENDE", "DRIVKRAFT",
+  "DYNAMISK", "EFFEKTIVITET", "EKSEMPELVIS", "EKSPERTISE", "EKSPERIMENT", "EKSPONERING", "ELEKTRONISK", "ELEMENTÆR", "EMOSJONELL", "ENERGIKILDE",
+  "ENGASJEMENT", "ENTUSIASTISK", "EPIDEMIOLOGI", "ETABLERING", "ETTERFØLGE", "EVALUERING", "EVENTYRLIG", "EVOLUSJON", "FAKTISK", "FAMILIEFORHOLD",
+  "FANTASTISK", "FEILKILDER", "FELLESKAP", "FINANSIERING", "FLEKSIBEL", "FORBEDRING", "FORBEREDELSE", "FORBRUKER", "FORDELAKTIG", "FORDELING",
+  "FOREDRAGSHOLDER", "FORENKLE", "FORESPØRSEL", "FORFATTER", "FORHOLDSTALL", "FORKLARING", "FORKORTELSE", "FORSINKELSE", "FORSKNING", "FORSVARLIG",
+  "FORSØKSMETODE", "FORUTSETNING", "FORVALTNING", "FOTOGRAFISK", "FREMGANGSMÅTE", "FREMTIDIG", "FREMTREDENDE", "FRITIDSAKTIVITET", "FUNKSJONELL", "FØLELSER",
+  "FØRSTEKLASSES", "GALAKSEBILDER", "GENERASJON", "GEOGRAFISK", "GJENNOMFØRE", "GJENNOMSIKTIG", "GJENOPPRETTE", "GJENSIDIG", "GLOBALISERING", "GRATULERER",
+  "GRUNNLEGGENDE", "GRUPPEDYNAMIKK", "GYLDIGHET", "HANDLINGSPLAN", "HARMONISK", "HELSESYSTEM", "HISTORISK", "HOVEDSTADEN", "HUMANITÆR", "HYPOTESE",
+  "IDENTIFISERE", "IDEOLOGISK", "ILLUSTRASJON", "IMAGINÆR", "IMPLEMENTERE", "IMPLIKASJON", "IMPORTERE", "INDIVIDUELL", "INDUSTRIELL", "INFORMATIV",
+  "INFRASTRUKTUR", "INNOVASJON", "INSPIRASJON", "INSTITUSJON", "INSTRUKTØR", "INTEGRASJON", "INTENSIVT", "INTERAKTIV", "INTERNASJONAL", "INTERPRETASJON",
+  "INTRODUKSJON", "INVESTERING", "IRRASJONELL", "ISOLASJON", "JURIDISK", "JUSTERING", "KAPASITET", "KARAKTERISTIKK", "KATEGORISERE", "KJEMPEFLINK",
+  "KLASSIFISERING", "KLIMATISK", "KOMMUNIKASJON", "KOMPETANSE", "KOMPLEKSITET", "KOMPONENTER", "KONFERANSE", "KONFLIKTLØSNING", "KONSEKVENSER", "KONSERVATIV",
+  "KONSISTENT", "KONSTITUSJON", "KONSTRUKSJON", "KONSULTASJON", "KONTEKSTUELL", "KONTINUERLIG", "KONTRAST", "KONTROLLERE", "KONVENSJONELL", "KOORDINASJON",
+  "KORREKTUR", "KREATIVITET", "KREDIBILITET", "KRITISK", "KULTURELL", "KUNNSKAP", "KVALIFISERE", "KVALITETSSIKRING", "KVANTITATIV", "LABORATORIUM",
+  "LANDSKAPSBILDER", "LEGALISERING", "LEGITIMASJON", "LEVERANDØR", "LINGVISTISK", "LITTERATUR", "LOGISTIKK", "LOKALISERING", "LØSNINGSORIENTERT", "MAGASINERING",
+  "MAJORITET", "MANIPULASJON", "MANUELL", "MARKEDSANDEL", "MATEMATISK", "MEKANISME", "MEDIEBRUK", "MENNESKERETTIGHETER", "METODOLOGI", "MINIMALISTISK",
+  "MOBILISERING", "MODERATOR", "MODIFIKASJON", "MONITORERING", "MOTIVASJON", "MULTIKULTURELL", "NASJONALITET", "NATURLIGVIS", "NEGOTIASJON", "NEUTRALISERE",
+  "NOMINASJON", "NORMALISERING", "NOTIFIKASJON", "NUMERISK", "NYANSERT", "OBJEKTIVT", "OBSERVASJON", "OFFENTLIGHET", "OKKUPASJON", "OPERASJONELL",
+  "OPPBEVARING", "OPPDATERING", "OPPFINNELSE", "OPPFØLGING", "OPPLEVDE", "OPPLEVELSE", "OPPLYSNING", "OPPSTART", "OPTIMALISERING", "ORGANISASJON",
+  "ORIENTERING", "OVERENSSTEMMELSE", "OVERGANGSPERIODE", "OVERVÅKNING", "PARALLELL", "PARTNERSKAP", "PEDAGOGISK", "PERFEKTIONISME", "PERIODEVIS", "PERSPEKTIV",
+  "PLANLEGGING", "PLASSBESPARENDE", "POLITISK", "POPULARITET", "PORTFOLIO", "PRAKTISK", "PRESISJON", "PRESENTASJON", "PRINSIPPIELL", "PRIORITERE",
+  "PRODUKTIVITET", "PROFESJONELL", "PROGRAMMERING", "PROGRESJON", "PROSESSERING", "PROTOKOLL", "PUBLIKASJON", "PUBLISERING", "PÅLITELIGHET", "RASJONELL",
+  "REALISTISK", "REDAKSJONELL", "REFERANSE", "REFLEKSJON", "REGIONALT", "REGISTRERING", "REGULERING", "REHABILITERING", "RELEVANT", "REPRESENTASJON",
+  "REPRODUKSJON", "RESEPSJON", "RESPEKTFULL", "RESTAURERING", "RESULTATORIENTERT", "REVOLUSJON", "RISIKOVURDERING", "ROBUSTHET", "RUTINEMESSIG", "SAMARBEID",
+  "SAMFUNNSANSVAR", "SAMMENLIGNING", "SAMMENSETNING", "SAMTIDIG", "SANNSYNLIGHET", "SEKRETARIAT", "SELEKSJON", "SELVSTENDIG", "SENTRALISERT", "SERVICENIVÅ",
+  "SIGNIFIKANT", "SIMULASJON", "SITUASJON", "SOSIALISERING", "SPESIALISERING", "SPESIFIKASJON", "STABILISERING", "STANDARDISERING", "STATISTISK", "STRATEGISK",
+  "STRUKTURERT", "STUDIEPROGRAM", "SUBJEKTIVT", "SUKSESSFAKTOR", "SUPPLERENDE", "SYMPATISK", "SYNTHETISK", "SYSTEMATISK", "TEKNOLOGISK", "TEORETISK",
+  "TERAPEUTISK", "TILGJENGELIGHET", "TILPASNING", "TILSYNSFØRER", "TOLERANSE", "TRADISJONELL", "TRANSFORMASJON", "TRANSPARENT", "TRANSPORTMIDDEL", "TREDIMENSJONAL",
+  "TROVERDIGHET", "TYPISK", "UNDERVISNING", "UNIKT", "UNIVERSALITET", "URBANISERING", "UTDANNING", "UTFORDRING", "UTGANGSPUNKT", "UTVIKLING",
+  "VALGFRIHET", "VALIDERING", "VARIASJON", "VEKSTPOTENSIAL", "VENTILASJON", "VERDENSOMSPENNENDE", "VERIFIKASJON", "VERSJONSKONTROLL", "VIKTIGHET", "VINTERSOL",
+  "VIRKELIGHET", "VISUALISERING", "VITENSKAPELIG", "VOLUMETRISK", "VURDERING", "YTELSESMÅLING", "ØKONOMISK", "ØKOSYSTEM", "ÅPENHET", "ÅRLIGRAPPORT",
+  "ABONNEMENT", "ADAPTIV", "ADMINISTRASJON", "AGGREGASJON", "AKSEPTABEL", "AKTIVITET", "ALGORITME", "AMBISIØS", "ANALYTISK", "ANBEFALING",
+  "ANERKJENNELSE", "ANVENDELSE", "APPARAT", "APPLIKATOR", "ARBEIDSFLATE", "ARKIVERING", "ARRANGØR", "ARTIKKEL", "ASSIMILASJON", "ATTESTASJON",
+  "AUTORISERT", "AVANSERTE", "AVGJØRELSE", "AVKLARING", "AVSLUTTET", "BAKGRUNNSSTØY", "BALANSERT", "BANKVIRKSOMHET", "BEARBEIDET", "BEDRIFTSKULTUR",
+  "BEGRENSE", "BEHANDLET", "BEHOVET", "BEKREFTET", "BELASTET", "BELYSNING", "BENYTTELSE", "BEREGNET", "BESKRIVET", "BESTEMTE",
+  "BESTILLT", "BETRAKTET", "BETYDELIG", "BEVEGELIG", "BIBLIOGRAFISK", "BIOTEKNOLOGI", "BOKSTAVEN", "BRUKERDATA", "BYGGEPROSESS", "BYRÅKRATISK",
+  "BÆREKRAFT", "DAGLIGLIV", "DATASTRUKTUR", "DEBATTERT", "DEFINERT", "DEMONSTRERT", "DEPARTEMENTAL", "DESIGNET", "DETALJER", "DIAGNOSE",
+  "DIFFERENSIERT", "DIGITALT", "DIREKTØR", "DISIPLIN", "DISKUSJONER", "DISTRIBUERT", "DOKUMENTERT", "DOMINERTE", "DRIVKRAFTEN", "DYNAMIKK",
+  "EFFEKTIVT", "EKSEMPLER", "EKSPERIMENTELL", "EKSPONERT", "ELEKTRISK", "ELEMENTER", "EMOSJONELT", "ENERGIEN", "ENGASJERT", "ENTUSIAST",
+  "EPIDEMIOLOGISK", "ETABLERT", "ETTERFØLGT", "EVALUERT", "EVENTYR", "EVOLUSJONÆR", "FAKTORER", "FAMILIEFORHOLDET", "FEILFRITT", "FELLES",
+  "FINANSIERT", "FLEKSIBILITET", "FORBEDRET", "FORBEREDT", "FORBRUKET", "FORDELENE", "FOREDRAG", "FORENKLET", "FORESPØRSLER", "FORFATTEREN",
+  "FORHOLDET", "FORKLART", "FORKORTET", "FORSINKET", "FORSKER", "FORSVARLIGT", "FORSØK", "FORUTSETTER", "FORVALTET", "FOTOGRAF",
+  "FREMGANG", "FREMTIDEN", "FREMTREDEN", "FRITID", "FUNKSJONER", "FØLELSEN", "FØRSTEGANGS", "GALAKSER", "GENERELT", "GEOGRAFISK",
+  "GJENNOMFØRT", "GJENNOMSNITT", "GJENOPPRETTET", "GJENSPEILER", "GLOBALISERT", "GRATULERER MED", "GRUNNLAG", "GRUPPER", "GYLDIG", "HANDLING",
+  "HARMONI", "HELSE", "HISTORIE", "HOVEDSAK", "HUMANITÆRE", "HYPOTESER", "IDENTIFISERT", "IDEOLOGIER", "ILLUSTRERT", "IMAGINÆRE",
+  "IMPLEMENTERT", "IMPLIKASJONER", "IMPORTERT", "INDIVIDUELT", "INDUSTRIEN", "INFORMASJON", "INFRASTRUKTUREN", "INNOVATIV", "INSPIRERT", "INSTITUSJONER",
+  "INSTRUKSER", "INTEGRERT", "INTENSIV", "INTERESSANT", "INTERNASJONALT", "INTERPRETERT", "INTRODUSERT", "INVESTERT", "IRRASJONELT", "ISOLERT",
+  "JURIDISK SETT", "JUSTERT", "KAPASITETEN", "KARAKTERISTISK", "KATEGORISERT", "KJEMPEBRA", "KLASSIFISERT", "KLIMA", "KOMMUNIKASJONEN", "KOMPETENT",
+  "KOMPLEKSE", "KOMPONERT", "KONFERANSER", "KONFLIKTER", "KONSEKVENT", "KONSERVATIVE", "KONSISTENS", "KONSTITUSJONEN", "KONSTRUERT", "KONSULTASJONER",
+  "KONTEKST", "KONTINUERLIGT", "KONTRASTER", "KONTROLLERT", "KONVENSJONER", "KOORDINERT", "KORREKT", "KREATIV", "KREDIBEL", "KRITISKE",
+  "KULTURELT", "KUNNSKAPEN", "KVALIFISERT", "KVALITET", "KVANTITATIVT", "LABORATORIET", "LANDSKAP", "LEGALISERT", "LEGITIMERT", "LEVERANSE",
+  "LINGVISTIKK", "LITTERÆR", "LOGISTIKKEN", "LOKALISERT", "LØSNING", "MAGASINERT", "MAJORITETEN", "MANIPULERT", "MANUELLT", "MARKEDSFØRING",
+  "MATEMATIKK", "MEKANISMER", "MEDIEBRUKEN", "MENNESKERETTIGHETENE", "METODISK", "MINIMALISTISK", "MOBILISERT", "MODERERT", "MODIFISERT", "MONITORERT",
+  "MOTIVERT", "MULTIKULTURELT", "NASJONAL", "NATURLIG", "NEGOTIERT", "NEUTRALISERT", "NOMINERT", "NORMALISERT", "NOTIFISERT", "NUMERISK",
+  "NYANSERTE", "OBJEKTIV", "OBSERVERT", "OFFENTLIG", "OKKUPERT", "OPERASJONER", "OPPBEVARINGEN", "OPPDATERT", "OPPFINNER", "OPPFØLGINGEN",
+  "OPPLEVD", "OPPLEVELSEN", "OPPLYSNINGER", "OPPSTARTSFASEN", "OPTIMALISERT", "ORGANISERT", "ORIENTERT", "OVERENSSTEMMENDE", "OVERGANG", "OVERVÅKET",
+  "PARALLELLE", "PARTNERSKAPET", "PEDAGOGISK SETT", "PERFEKT", "PERIODISK", "PERSPEKTIVER", "PLANLAGT", "PLASSBESPARENDE", "POLITISKE", "POPULÆR",
+  "PORTFOLIOEN", "PRAKTISKE", "PRESIS", "PRESENTERT", "PRINSIPPER", "PRIORITERT", "PRODUKTIV", "PROFESJONELLE", "PROGRAMMERER", "PROGRESJONEN",
+  "PROSESSERT", "PROTOKOLLER", "PUBLIKUM", "PUBLISERT", "PÅLITELIG", "RASJONELT", "REALISTISKE", "REDAKSJONEN", "REFERANSER", "REFLEKTERT",
+  "REGIONAL", "REGISTRERT", "REGULERT", "REHABILITERT", "RELEVANS", "REPRESENTERT", "REPRODUSERT", "RESEPSJONEN", "RESPEKT", "RESTAURERT",
+  "RESULTATER", "REVOLUSJONÆR", "RISIKO", "ROBUST", "RUTINE", "SAMARBEIDET", "SAMFUNN", "SAMMENLIGNET", "SAMMENSETNINGEN", "SAMTIDIGT",
+  "SANNSYNLIG", "SEKRETÆR", "SELEKTERT", "SELVSTENDIGHET", "SENTRAL", "SERVICE", "SIGNIFIKANT", "SIMULERT", "SITUASJONEN", "SOSIALT",
+  "SPESIALISERT", "SPESIFIKT", "STABIL", "STANDARD", "STATISTIKK", "STRATEGI", "STRUKTUR", "STUDIER", "SUBJEKTIV", "SUKSESS",
+  "SUPPLERT", "SYMPATISK", "SYNTHETISK", "SYSTEMATISK", "TEKNOLOGI", "TEORETISK", "TERAPEUTISK", "TILGJENGELIG", "TILPASSET", "TILSYNSFØREREN",
+  "TOLERANT", "TRADISJONELT", "TRANSFORMERT", "TRANSPARENS", "TRANSPORT", "TREDIMENSJONALT", "TROVERDIG", "TYPISK", "UNDERVISER", "UNIK",
+  "UNIVERSAL", "URBANISERT", "UTDANNET", "UTFORSKET", "UTGANGSPUNKTET", "UTVIKLET", "VALGFRI", "VALIDERT", "VARIABEL", "VEKST",
+  "VENTILERT", "VERDENSOMSPENNENDE", "VERIFISERT", "VERSJON", "VIKTIG", "VINTERTID", "VIRKELIG", "VISUALISERT", "VITENSKAP", "VOLUM",
+  "VURDERT", "YTELSE", "ØKONOMISK SETT", "ØKOSYSTEMET", "ÅPEN", "ÅRLIG"
+];
 
 const ROWS = 10, COLS = 10, TOTAL = ROWS * COLS;
 const TILE = 26, GAP = 12;
@@ -24,6 +103,41 @@ function genGrid() {
   const grid = new Array(TOTAL).fill(null);
 
   // Step 1: checkerboard of vowels and consonants
+  // Step 0: Inject 3 random long bonus words
+  const wordsToPlace = [];
+  const bonusWordIndices = new Set();
+  while (bonusWordIndices.size < 3 && bonusWordIndices.size < BONUS_WORDS.length) {
+    bonusWordIndices.add(Math.floor(Math.random() * BONUS_WORDS.length));
+  }
+  for (const index of bonusWordIndices) {
+    wordsToPlace.push(BONUS_WORDS[index]);
+  }
+  shuffle(wordsToPlace); // Shuffle the selected 3 words to randomize placement order
+  let placedCount = 0;
+  
+  for (const word of wordsToPlace) {
+    if (placedCount >= 3) break;
+    const horizontal = Math.random() > 0.5;
+    const r = Math.floor(Math.random() * (horizontal ? ROWS : ROWS - word.length));
+    const c = Math.floor(Math.random() * (horizontal ? COLS - word.length : COLS));
+    
+    // Check if space is clear
+    let canPlace = true;
+    for (let i = 0; i < word.length; i++) {
+      const idx = horizontal ? (r * COLS + (c + i)) : ((r + i) * COLS + c);
+      if (grid[idx] !== null) { canPlace = false; break; }
+    }
+
+    if (canPlace) {
+      for (let i = 0; i < word.length; i++) {
+        const idx = horizontal ? (r * COLS + (c + i)) : ((r + i) * COLS + c);
+        grid[idx] = word[i];
+      }
+      placedCount++;
+    }
+  }
+
+  // Step 1: Fill remaining with checkerboard of vowels and consonants
   const vowelPool = [];
   const consonantPool = [];
   while (vowelPool.length < TOTAL) vowelPool.push(...VOWELS);
@@ -35,6 +149,7 @@ function genGrid() {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const i = r * COLS + c;
+      if (grid[i] !== null) continue;
       grid[i] = (r + c) % 2 === 0 ? vowelPool[vi++] : consonantPool[ci++];
     }
   }
@@ -71,6 +186,17 @@ function genGrid() {
 
   return grid;
 }
+
+const cellCenter = (i) => ({
+  x: (i % COLS) * (TILE + GAP) + TILE / 2,
+  y: Math.floor(i / COLS) * (TILE + GAP) + TILE / 2,
+});
+
+const cellFromPoint = (x, y) => {
+  const c = Math.floor(x / (TILE + GAP));
+  const r = Math.floor(y / (TILE + GAP));
+  return (c >= 0 && c < COLS && r >= 0 && r < ROWS) ? r * COLS + c : -1;
+};
 
 function adj(a, b) {
   const ar = Math.floor(a/COLS), ac = a%COLS;
@@ -132,7 +258,11 @@ export default function WordGame() {
         const s = wordScore(w);
         setFound(prev => [...prev, { word: w, score: s }]);
         setScore(prev => prev + s);
-        showMsg(`+${s} poeng! ✓`, "ok");
+        if (w.length >= 8) {
+          showMsg(`BONUSORD! +${s} poeng! ★`, "ok");
+        } else {
+          showMsg(`+${s} poeng! ✓`, "ok");
+        }
       } else {
         showMsg(`"${w}" er ikke et ord`, "bad");
       }
@@ -143,17 +273,6 @@ export default function WordGame() {
     setPath([]);
     dragging.current = false;
   }, [grid, found]);
-
-  const cellCenter = (i) => ({
-    x: (i % COLS) * (TILE + GAP) + TILE / 2,
-    y: Math.floor(i / COLS) * (TILE + GAP) + TILE / 2,
-  });
-
-  const cellFromPoint = (x, y) => {
-    const c = Math.floor(x / (TILE + GAP));
-    const r = Math.floor(y / (TILE + GAP));
-    return (c >= 0 && c < COLS && r >= 0 && r < ROWS) ? r * COLS + c : -1;
-  };
 
   const getSVGPoint = (e) => {
     const svg = svgRef.current;
@@ -259,10 +378,10 @@ export default function WordGame() {
         <div style={{ background:"#1e1e1e", borderRadius:16, padding:24,
           maxWidth:340, textAlign:"center", color:"#ccc", marginTop:16 }}>
           <p style={{ fontSize:15, lineHeight:1.6, margin:"0 0 10px" }}>
-            Koble bokstavene ved å dra linjer – på kryss og tvers. Lag norske ord!
+            Koble bokstavene ved å dra linjer – på kryss og tvers. Finn lange bonusord for ekstra poeng!
           </p>
           <p style={{ fontSize:13, color:"#888", margin:"0 0 20px" }}>
-            Minst 3 bokstaver · 10×10 rutenett · 2 minutter
+            Minst 3 bokstaver · 8+ bokstaver gir bonus · 2 minutter
           </p>
           <button onClick={() => startGame(false)} style={btnStyle}>Start spill</button>
         </div>
@@ -316,13 +435,13 @@ export default function WordGame() {
             {path.length > 1 && path.slice(0, -1).map((idx, i) => {
               const a = cellCenter(idx), b = cellCenter(path[i + 1]);
               return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                stroke="#f5f0dc" strokeWidth={3.5} strokeLinecap="round" opacity={0.8} />;
+                stroke="#f59e0b" strokeWidth={4.5} strokeLinecap="round" opacity={0.9} />;
             })}
 
             {dragging.current && path.length > 0 && pointerPos && (
               <line x1={cellCenter(path[path.length - 1]).x} y1={cellCenter(path[path.length - 1]).y}
                 x2={pointerPos.x} y2={pointerPos.y}
-                stroke="#f5f0dc" strokeWidth={2} strokeDasharray="4 2" opacity={0.4} />
+                stroke="#f59e0b" strokeWidth={3} strokeDasharray="4 2" opacity={0.6} />
             )}
 
             {grid.map((letter, i) => {
@@ -332,14 +451,14 @@ export default function WordGame() {
               return (
                 <g key={i} transform={`translate(${x},${y})`}>
                   <rect width={TILE} height={TILE} rx={8}
-                    fill={isLast ? "#e0d9c0" : inPath ? "#c8c0a0" : canConnect ? "#3a3a2a" : "#2a2a2a"}
-                    stroke={isLast ? "#f5f0dc" : inPath ? "#d4c88a" : canConnect ? "#555" : "#383838"}
-                    strokeWidth={isLast ? 1.5 : 0.8} />
+                    fill={isLast ? "#f59e0b" : inPath ? "#fbbf24" : canConnect ? "#d1d5db" : "#f5f0dc"}
+                    stroke={isLast ? "#000" : inPath ? "#444" : "transparent"}
+                    strokeWidth={1} />
                   <text x={TILE/2} y={TILE/2+1} textAnchor="middle" dominantBaseline="central"
-                    fontSize={15} fontWeight={700} fill={inPath ? "#111" : "#f5f0dc"}
-                    fontFamily="Georgia,serif">{letter}</text>
+                    fontSize={16} fontWeight={800} fill="#000"
+                    fontFamily="system-ui,sans-serif">{letter}</text>
                   <text x={TILE-5} y={TILE-4} textAnchor="middle" dominantBaseline="auto"
-                    fontSize={7} fill={inPath ? "#555" : "#666"}>{LETTER_SCORES[letter] || 1}</text>
+                    fontSize={7} fill="#555">{LETTER_SCORES[letter] || 1}</text>
                 </g>
               );
             })}
