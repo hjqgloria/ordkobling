@@ -123,6 +123,7 @@ export default function WordGame() {
   const [msgType, setMsgType] = useState("ok");
   const [checking, setChecking] = useState(false);
   const [pointerPos, setPointerPos] = useState(null);
+  const [tada, setTada] = useState(null);
   const dragging = useRef(false);
   const svgRef = useRef(null);
   const msgTimer = useRef(null);
@@ -155,9 +156,17 @@ export default function WordGame() {
     try {
       const ok = await validateWord(w.toLowerCase());
       if (ok) {
-        const s = wordScore(w);
+        const baseScore = wordScore(w);
+        const bonus = (w.length >= 8 ? 5 : 0) + (BONUS_WORDS.includes(w) ? 10 : 0);
+        const s = baseScore + bonus;
         setFound(prev => [...prev, { word: w, score: s }]);
         setScore(prev => prev + s);
+
+        if (w.length > 10) {
+          setTada(w);
+          setTimeout(() => setTada(null), 3000);
+        }
+
         showMsg(w.length >= 8 ? `BONUSORD! +${s} poeng! ★` : `+${s} poeng! ✓`, "ok");
       } else {
         showMsg(`"${w}" er ikke et ord`, "bad");
@@ -297,7 +306,7 @@ export default function WordGame() {
           <p style={{ fontSize:14, color:"#888", margin:"0 0 14px" }}>{found.length} ord funnet</p>
           {found.length > 0 && (
             <div style={{ marginBottom:16, maxHeight:160, overflowY:"auto", textAlign:"left" }}>
-              {found.map((f, i) => (
+              {[...found].sort((a, b) => b.score - a.score || b.word.length - a.word.length).map((f, i) => (
                 <span key={i} style={{ display:"inline-block", background:"#2a2a2a",
                   borderRadius:8, padding:"3px 10px", margin:"3px", fontSize:12, color:"#f5f0dc" }}>
                   {f.word} <span style={{ color:"#4ade80" }}>({f.score})</span>
@@ -328,7 +337,26 @@ export default function WordGame() {
           <span style={{ fontSize:20, fontWeight:700, color:timerColor }}>{timeLeft}s</span>
         </div>
 
-        <div style={{ background:"#000", borderRadius:10, padding:6, touchAction:"none" }}>
+        <div style={{ background:"#000", borderRadius:10, padding:6, touchAction:"none", position: "relative" }}>
+          {tada && (
+            <div style={{
+              position: "absolute",
+              top: 0, left: 0, right: 0, bottom: 0,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              background: "rgba(0,0,0,0.4)",
+              zIndex: 10,
+              borderRadius: 10,
+              pointerEvents: "none",
+            }}>
+              <div style={{ fontSize: 60, marginBottom: 10 }}>🎉</div>
+              <div style={{ 
+                color: "#fbbf24", fontSize: 28, fontWeight: 900, 
+                textShadow: "0 0 20px rgba(251, 191, 36, 0.8)",
+                textAlign: "center"
+              }}>FANTASTISK!<br/>{tada}</div>
+            </div>
+          )}
           <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width={W} height={H}
             onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={onEnd}
             onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
