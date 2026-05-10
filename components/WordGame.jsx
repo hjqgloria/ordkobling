@@ -10,21 +10,64 @@ const LETTER_SCORES = {
 const VOWELS = "AEIOUYÆØÅ".split("");
 const CONSONANTS = "BDDFGHJKLMNPRSTV".split("");
 const COMMON_PAIRS = ["ER","EN","ET","ST","NG","AR","OR","AN","IN","RE","LE","NE","DE","TE","SE","ME"];
-
 const ROWS = 10, COLS = 10, TOTAL = ROWS * COLS;
 const TILE = 26, GAP = 12;
 
-function shuffle(array) {
+export function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
 }
 
-function genGrid() {
+export function genGrid() {
   const grid = new Array(TOTAL).fill(null);
+  const protectedIndices = new Set();
 
-  // 1. Lag et grunnleggende rutenett med vokaler og konsonanter (checkerboard)
+  // Step 0: Inject up to 3 random bonus words
+  const eligibleWords = BONUS_WORDS.filter(w => w.replace(/\s/g, "").length <= COLS);
+  const selectedWords = [];
+  
+  if (eligibleWords.length > 0) {
+    const indices = new Set();
+    const maxSelect = Math.min(3, eligibleWords.length);
+    let indexSafety = 0;
+    while (indices.size < maxSelect && indexSafety < 100) {
+      indexSafety++;
+      indices.add(Math.floor(Math.random() * eligibleWords.length));
+    }
+    indices.forEach(idx => selectedWords.push(eligibleWords[idx].replace(/\s/g, "").toUpperCase()));
+  }
+
+  shuffle(selectedWords);
+  let placedCount = 0;
+  
+  for (const word of selectedWords) {
+    if (placedCount >= 3) break;
+    const horizontal = Math.random() > 0.5;
+    const maxR = horizontal ? ROWS : Math.max(1, ROWS - word.length);
+    const maxC = horizontal ? Math.max(1, COLS - word.length) : COLS;
+    const r = Math.floor(Math.random() * maxR);
+    const c = Math.floor(Math.random() * maxC);
+    
+    // Check if space is clear
+    let canPlace = true;
+    for (let i = 0; i < word.length; i++) {
+      const idx = horizontal ? (r * COLS + (c + i)) : ((r + i) * COLS + c);
+      if (grid[idx] !== null) { canPlace = false; break; }
+    }
+
+    if (canPlace) {
+      for (let i = 0; i < word.length; i++) {
+        const idx = horizontal ? (r * COLS + (c + i)) : ((r + i) * COLS + c);
+        grid[idx] = word[i];
+        protectedIndices.add(idx);
+      }
+      placedCount++;
+    }
+  }
+
+  // Step 1: Fill remaining with checkerboard of vowels and consonants
   const vowelPool = [];
   const consonantPool = [];
   while (vowelPool.length < TOTAL) vowelPool.push(...VOWELS);
@@ -32,53 +75,46 @@ function genGrid() {
   shuffle(vowelPool);
   shuffle(consonantPool);
 
+  let vi = 0, ci = 0;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      grid[r * COLS + c] = (r + c) % 2 === 0 ? vowelPool.pop() : consonantPool.pop();
+      const i = r * COLS + c;
+      if (grid[i] !== null) continue;
+      grid[i] = (r + c) % 2 === 0 ? vowelPool[vi++] : consonantPool[ci++];
     }
   }
 
-  // 2. Erstatt tilfeldige vokaler med Æ, Ø, Å for å sikre norske tegn
+  // Step 2: place common Norwegian pairs in random adjacent spots
+  const pairCount = Math.floor(TOTAL / 7);
+  const usedPairs = new Set();
+  let attempts = 0;
+  while (usedPairs.size < pairCount && attempts < 200) {
+    attempts++;
+    const pair = COMMON_PAIRS[Math.floor(Math.random() * COMMON_PAIRS.length)];
+    const r = Math.floor(Math.random() * ROWS);
+    const c = Math.floor(Math.random() * (COLS - 1));
+    const i = r * COLS + c;
+    const j = i + 1;
+    const key = `${i}-${j}`;
+    if (!usedPairs.has(key) && grid[i] === null && grid[j] === null) {
+      grid[i] = pair[0];
+      grid[j] = pair[1];
+      usedPairs.add(key);
+    }
+  }
+
+  // Step 3: guarantee at least 5 of each Norwegian char
   ["Æ", "Ø", "Å"].forEach(ch => {
-    const vowelIndices = [];
-    grid.forEach((l, i) => { if ("AEIOU".includes(l)) vowelIndices.push(i); });
-    shuffle(vowelIndices);
-    for (let i = 0; i < 5 && i < vowelIndices.length; i++) {
-      grid[vowelIndices[i]] = ch;
-    }
-  });
-
-  // 3. Velg ut 3 bonusord og overskriv rutenettet med disse
-  const protectedIndices = new Set();
-  const wordsToPlace = [];
-  const bIndices = new Set();
-  while (bIndices.size < 3 && bIndices.size < BONUS_WORDS.length) {
-    bIndices.add(Math.floor(Math.random() * BONUS_WORDS.length));
-  }
-  bIndices.forEach(idx => wordsToPlace.push(BONUS_WORDS[idx].trim().toUpperCase()));
-
-  wordsToPlace.forEach(word => {
-    for (let attempt = 0; attempt < 50; attempt++) {
-      const horizontal = Math.random() > 0.5;
-      const r = Math.floor(Math.random() * (horizontal ? ROWS : ROWS - word.length + 1));
-      const c = Math.floor(Math.random() * (horizontal ? COLS - word.length + 1 : COLS));
-      
-      const targetIndices = [];
-      let ok = true;
-      for (let i = 0; i < word.length; i++) {
-        const idx = horizontal ? (r * COLS + (c + i)) : ((r + i) * COLS + c);
-        // Sjekk at vi ikke overskriver et annet bonusord
-        if (protectedIndices.has(idx)) { ok = false; break; }
-        targetIndices.push(idx);
-      }
-
-      if (ok) {
-        targetIndices.forEach((idx, i) => {
-          grid[idx] = word[i];
-          protectedIndices.add(idx);
-        });
-        break; // Ordet er plassert, gå til neste ord
-      }
+    let count = grid.filter(l => l === ch).length;
+    if (count >= 5) return;
+    const candidates = [];
+    grid.forEach((l, i) => {
+      if (l && "AEIOU".includes(l) && !usedPairs.has(`${i}-${i + 1}`) && !protectedIndices.has(i)) candidates.push(i);
+    });
+    shuffle(candidates);
+    for (let i = 0; i < candidates.length && count < 5; i++) {
+      grid[candidates[i]] = ch;
+      count++;
     }
   });
 
@@ -96,13 +132,13 @@ const cellFromPoint = (x, y) => {
   return (c >= 0 && c < COLS && r >= 0 && r < ROWS) ? r * COLS + c : -1;
 };
 
-function adj(a, b) {
+export function adj(a, b) {
   const ar = Math.floor(a/COLS), ac = a%COLS;
   const br = Math.floor(b/COLS), bc = b%COLS;
   return Math.abs(ar-br) <= 1 && Math.abs(ac-bc) <= 1 && a !== b;
 }
 
-function wordScore(word) {
+export function wordScore(word) {
   return word.split("").reduce((s, c) => s + (LETTER_SCORES[c] || 1), 0);
 }
 
@@ -113,10 +149,11 @@ async function validateWord(word) {
 }
 
 export default function WordGame() {
-  const [grid, setGrid] = useState(genGrid);
+  const [grid, setGrid] = useState(() => genGrid());
   const [path, setPath] = useState([]);
   const [found, setFound] = useState([]);
   const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
   const [phase, setPhase] = useState("start");
   const [msg, setMsg] = useState("");
@@ -127,6 +164,18 @@ export default function WordGame() {
   const dragging = useRef(false);
   const svgRef = useRef(null);
   const msgTimer = useRef(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("ordkobling-best");
+    if (saved) setHighScore(parseInt(saved, 10));
+  }, []);
+
+  useEffect(() => {
+    if (score > highScore) {
+      setHighScore(score);
+      localStorage.setItem("ordkobling-best", score.toString());
+    }
+  }, [score, highScore]);
 
   useEffect(() => {
     if (phase !== "play") return;
@@ -145,13 +194,11 @@ export default function WordGame() {
 
   const submitWord = useCallback(async (p) => {
     const w = p.map(i => grid[i]).join("");
-    if (w.length < 3) return;
-    
+    if (w.length < 3) { setPath([]); dragging.current = false; return; }
     if (found.find(f => f.word === w)) {
       showMsg("Allerede funnet!", "warn");
-      return;
+      setPath([]); dragging.current = false; return;
     }
-
     setChecking(true);
     try {
       const ok = await validateWord(w.toLowerCase());
@@ -166,7 +213,6 @@ export default function WordGame() {
           setTada(w);
           setTimeout(() => setTada(null), 3000);
         }
-
         showMsg(w.length >= 8 ? `BONUSORD! +${s} poeng! ★` : `+${s} poeng! ✓`, "ok");
       } else {
         showMsg(`"${w}" er ikke et ord`, "bad");
@@ -175,6 +221,8 @@ export default function WordGame() {
       showMsg("Feil – prøv igjen", "bad");
     }
     setChecking(false);
+    setPath([]);
+    dragging.current = false;
   }, [grid, found]);
 
   const getSVGPoint = (e) => {
@@ -243,16 +291,8 @@ export default function WordGame() {
 
   const onEnd = () => {
     if (!dragging.current) return;
-    
-    // Synchronously reset state to prevent double-submission from overlapping events
-    const finalPath = path.slice();
-    dragging.current = false;
-    setPath([]);
+    submitWord(path.slice());
     setPointerPos(null);
-
-    if (finalPath.length >= 3) {
-      submitWord(finalPath);
-    }
   };
 
   const W = COLS * (TILE + GAP) - GAP;
@@ -261,8 +301,9 @@ export default function WordGame() {
   const timerColor = timeLeft > 40 ? "#4ade80" : timeLeft > 15 ? "#fbbf24" : "#f87171";
 
   const startGame = (newGrid = false) => {
+    setScore(0);
     if (newGrid) setGrid(genGrid());
-    setPath([]); setFound([]); setScore(0); setTimeLeft(120);
+    setPath([]); setFound([]); setTimeLeft(120);
     setMsg(""); setPhase("play");
   };
 
@@ -303,6 +344,7 @@ export default function WordGame() {
           maxWidth:340, textAlign:"center", color:"#ccc", marginTop:16 }}>
           <p style={{ fontSize:26, fontWeight:700, color:"#f5f0dc", margin:"0 0 4px" }}>Tid ute!</p>
           <p style={{ fontSize:34, fontWeight:800, color:"#4ade80", margin:"0 0 8px" }}>{score} poeng</p>
+          {score >= highScore && score > 0 && <p style={{ color:"#fbbf24", fontSize:12, fontWeight:700, marginTop:-8, marginBottom:8 }}>NY REKORD!</p>}
           <p style={{ fontSize:14, color:"#888", margin:"0 0 14px" }}>{found.length} ord funnet</p>
           {found.length > 0 && (
             <div style={{ marginBottom:16, maxHeight:160, overflowY:"auto", textAlign:"left" }}>
@@ -326,6 +368,7 @@ export default function WordGame() {
           justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
           <div style={{ color:"#f5f0dc", fontSize:20, fontWeight:700 }}>
             {score} <span style={{ fontSize:12, color:"#888", fontWeight:400 }}>poeng</span>
+            <div style={{ fontSize:10, color:"#fbbf24", fontWeight:400, marginTop:-2 }}>BEST: {highScore}</div>
           </div>
           <div style={{ height:32, display:"flex", alignItems:"center",
             justifyContent:"center", flex:1, padding:"0 8px" }}>
@@ -337,17 +380,17 @@ export default function WordGame() {
           <span style={{ fontSize:20, fontWeight:700, color:timerColor }}>{timeLeft}s</span>
         </div>
 
-        <div style={{ background:"#000", borderRadius:10, padding:6, touchAction:"none", position: "relative" }}>
+        <div style={{ background:"#000", borderRadius:10, padding:6, touchAction:"none" }}>
           {tada && (
             <div style={{
               position: "absolute",
               top: 0, left: 0, right: 0, bottom: 0,
               display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center",
-              background: "rgba(0,0,0,0.4)",
+              background: "rgba(0,0,0,0.5)",
               zIndex: 10,
               borderRadius: 10,
-              pointerEvents: "none",
+              pointerEvents: "none"
             }}>
               <div style={{ fontSize: 60, marginBottom: 10 }}>🎉</div>
               <div style={{ 
@@ -387,8 +430,6 @@ export default function WordGame() {
                   <text x={TILE/2} y={TILE/2+1} textAnchor="middle" dominantBaseline="central"
                     fontSize={16} fontWeight={800} fill="#000"
                     fontFamily="system-ui,sans-serif">{letter}</text>
-                  <text x={TILE-5} y={TILE-4} textAnchor="middle" dominantBaseline="auto"
-                    fontSize={7} fill="#555">{LETTER_SCORES[letter] || 1}</text>
                 </g>
               );
             })}
