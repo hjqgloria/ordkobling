@@ -315,10 +315,8 @@ export default function WordGame() {
     }
   };
 
-  const W = COLS * (TILE + GAP) - GAP;
-  const H = ROWS * (TILE + GAP) - GAP;
-  const msgColor = msgType === "ok" ? "#4ade80" : msgType === "warn" ? "#fbbf24" : "#f87171";
-  const timerColor = timeLeft > 40 ? "#4ade80" : timeLeft > 15 ? "#fbbf24" : "#f87171";
+  const W = COLS * (TILE + GAP) - GAP; // 368
+  const H = ROWS * (TILE + GAP) - GAP; // 368
 
   const startGame = (newGrid = false) => {
     setScore(0);
@@ -327,114 +325,88 @@ export default function WordGame() {
     setMsg(""); setPhase("play");
   };
 
-  const btnStyle = {
-    background: "#f5f0dc", color: "#111", border: "none",
-    borderRadius: 50, padding: "12px 28px", fontSize: 15,
-    fontWeight: 700, cursor: "pointer",
-  };
-  const btn2Style = {
-    background: "transparent", color: "#888", border: "1px solid #444",
-    borderRadius: 50, padding: "12px 20px", fontSize: 13, cursor: "pointer",
-  };
+  const btnClass = "bg-paper text-ink rounded-full px-7 py-3 text-[15px] font-bold transition-transform active:scale-95 cursor-pointer";
+  const btnSecondaryClass = "bg-transparent text-[#888] border border-[#444] rounded-full px-5 py-3 text-[13px] transition-colors hover:bg-white/5 cursor-pointer";
 
   return (
-    <div style={{ overflowY:"auto", background:"#111", minHeight:"100vh", display:"flex",
-      flexDirection:"column", alignItems:"center", padding:"12px 8px 40px",
-      fontFamily:"system-ui,sans-serif", userSelect:"none" }}>
+    <div className="overflow-y-auto bg-ink min-h-screen flex flex-col items-center p-3 pb-10 font-sans select-none">
 
-      <h1 style={{ color:"#f5f0dc", fontSize:20, fontWeight:700, margin:"0 0 8px", letterSpacing:1 }}>
+      <h1 className="text-paper text-xl font-bold mb-2 tracking-widest">
         ORDKOBLING
       </h1>
 
       {phase === "start" && (
-        <div style={{ background:"#1e1e1e", borderRadius:16, padding:24,
-          maxWidth:340, textAlign:"center", color:"#ccc", marginTop:16 }}>
-          <p style={{ fontSize:15, lineHeight:1.6, margin:"0 0 10px" }}>
+        <div className="bg-[#1e1e1e] rounded-2xl p-6 max-w-[340px] text-center text-[#ccc] mt-4">
+          <p className="text-[15px] leading-relaxed mb-2.5">
             Koble bokstavene ved å dra linjer – på kryss og tvers. Finn lange bonusord for ekstra poeng!
           </p>
-          <p style={{ fontSize:13, color:"#888", margin:"0 0 20px" }}>
+          <p className="text-[13px] text-[#888] mb-5">
             Minst 3 bokstaver · 8+ bokstaver gir bonus · 2 minutter
           </p>
-          <button onClick={() => startGame(false)} style={btnStyle}>Start spill</button>
+          <button onClick={() => startGame(false)} className={btnClass}>Start spill</button>
         </div>
       )}
 
       {phase === "over" && (
-        <div style={{ background:"#1e1e1e", borderRadius:16, padding:24,
-          maxWidth:340, textAlign:"center", color:"#ccc", marginTop:16 }}>
-          <p style={{ fontSize:26, fontWeight:700, color:"#f5f0dc", margin:"0 0 4px" }}>Tid ute!</p>
-          <p style={{ fontSize:34, fontWeight:800, color:"#4ade80", margin:"0 0 8px" }}>{score} poeng</p>
-          {score >= highScore && score > 0 && <p style={{ color:"#fbbf24", fontSize:12, fontWeight:700, marginTop:-8, marginBottom:8 }}>NY REKORD!</p>}
-          <p style={{ fontSize:14, color:"#888", margin:"0 0 14px" }}>{found.length} ord funnet</p>
+        <div className="bg-[#1e1e1e] rounded-2xl p-6 max-w-[340px] text-center text-[#ccc] mt-4">
+          <p className="text-2xl font-bold text-paper mb-1">Tid ute!</p>
+          <p className="text-[34px] font-extrabold text-bonus mb-2">{score} poeng</p>
+          {score >= highScore && score > 0 && <p className="text-[#fbbf24] text-xs font-bold -mt-2 mb-2">NY REKORD!</p>}
+          <p className="text-sm text-[#888] mb-3.5">{found.length} ord funnet</p>
           {found.length > 0 && (
-            <div style={{ marginBottom:16, maxHeight:160, overflowY:"auto", textAlign:"left" }}>
+            <div className="mb-4 max-h-40 overflow-y-auto text-left">
               {[...found].sort((a, b) => b.score - a.score || b.word.length - a.word.length).map((f, i) => (
-                <span key={i} style={{ display:"inline-block", background:"#2a2a2a",
-                  borderRadius:8, padding:"3px 10px", margin:"3px", fontSize:12, color:"#f5f0dc" }}>
-                  {f.word} <span style={{ color:"#4ade80" }}>({f.score})</span>
+                <span key={i} className="inline-block bg-[#2a2a2a] rounded-lg px-2.5 py-1 m-1 text-xs text-paper">
+                  {f.word} <span className="text-bonus">({f.score})</span>
                 </span>
               ))}
             </div>
           )}
-          <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
-            <button onClick={() => startGame(false)} style={btnStyle}>Spill igjen</button>
-            <button onClick={() => startGame(true)} style={btn2Style}>Nytt rutenett</button>
+          <div className="flex gap-2.5 justify-center">
+            <button onClick={() => startGame(false)} className={btnClass}>Spill igjen</button>
+            <button onClick={() => startGame(true)} className={btnSecondaryClass}>Nytt rutenett</button>
           </div>
         </div>
       )}
 
       {phase === "play" && (<>
-        <div style={{ width:"100%", maxWidth:W, display:"flex",
-          justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-          <div style={{ color:"#f5f0dc", fontSize:20, fontWeight:700 }}>
-            {score} <span style={{ fontSize:12, color:"#888", fontWeight:400 }}>poeng</span>
-            <div style={{ fontSize:10, color:"#fbbf24", fontWeight:400, marginTop:-2 }}>BEST: {highScore}</div>
+        <div className="w-full flex justify-between items-center mb-1.5 max-w-[368px]">
+          <div className="text-paper text-xl font-bold">
+            {score} <span className="text-xs text-[#888] font-normal">poeng</span>
+            <div className="text-[10px] text-[#fbbf24] font-normal -mt-0.5">BEST: {highScore}</div>
           </div>
-          <div style={{ height:32, display:"flex", alignItems:"center",
-            justifyContent:"center", flex:1, padding:"0 8px" }}>
-            {checking ? <span style={{ color:"#888", fontSize:13 }}>Sjekker...</span>
-              : msg ? <span style={{ color:msgColor, fontSize:14, fontWeight:600 }}>{msg}</span>
-              : word.length > 0 ? <span style={{ color:"#f5f0dc", fontSize:18, fontWeight:700, letterSpacing:2 }}>{word}</span>
-              : <span style={{ color:"#555", fontSize:12 }}>Dra for å lage ord</span>}
+          <div className="h-8 flex items-center justify-center flex-1 px-2">
+            {checking ? <span className="text-[#888] text-[13px]">Sjekker...</span>
+              : msg ? <span className={`text-sm font-semibold ${msgType === "ok" ? "text-bonus" : msgType === "warn" ? "text-amber-400" : "text-red-400"}`}>{msg}</span>
+              : word.length > 0 ? <span className="text-paper text-lg font-bold tracking-widest">{word}</span>
+              : <span className="text-[#555] text-xs">Dra for å lage ord</span>}
           </div>
-          <span style={{ fontSize:20, fontWeight:700, color:timerColor }}>{timeLeft}s</span>
+          <span className={`text-xl font-bold ${timeLeft > 40 ? "text-bonus" : timeLeft > 15 ? "text-amber-400" : "text-red-400"}`}>{timeLeft}s</span>
         </div>
 
-        <div style={{ background:"#000", borderRadius:10, padding:6, touchAction:"none" }}>
+        <div className="bg-black rounded-xl p-1.5 touch-none relative">
           {tada && (
-            <div style={{
-              position: "absolute",
-              top: 0, left: 0, right: 0, bottom: 0,
-              display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center",
-              background: "rgba(0,0,0,0.5)",
-              zIndex: 10,
-              borderRadius: 10,
-              pointerEvents: "none"
-            }}>
-              <div style={{ fontSize: 60, marginBottom: 10 }}>🎉</div>
-              <div style={{ 
-                color: "#fbbf24", fontSize: 28, fontWeight: 900, 
-                textShadow: "0 0 20px rgba(251, 191, 36, 0.8)",
-                textAlign: "center"
-              }}>FANTASTISK!<br/>{tada}</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 z-10 rounded-xl pointer-events-none">
+              <div className="text-6xl mb-2.5">🎉</div>
+              <div className="text-[#fbbf24] text-[28px] font-black text-center drop-shadow-[0_0_20px_rgba(251,191,36,0.8)]">
+                FANTASTISK!<br/>{tada}
+              </div>
             </div>
           )}
           <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width={W} height={H}
             onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={onEnd}
             onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
-            style={{ display:"block", cursor:checking ? "wait" : "default" }}>
+            className={`block ${checking ? "cursor-wait" : "cursor-default"}`}>
 
             {path.length > 1 && path.slice(0, -1).map((idx, i) => {
               const a = cellCenter(idx), b = cellCenter(path[i + 1]);
-              return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                stroke="#f59e0b" strokeWidth={4.5} strokeLinecap="round" opacity={0.9} />;
+              return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="stroke-[#f59e0b] stroke-[4.5] stroke-round opacity-90" />;
             })}
 
             {dragging.current && path.length > 0 && pointerPos && (
               <line x1={cellCenter(path[path.length - 1]).x} y1={cellCenter(path[path.length - 1]).y}
                 x2={pointerPos.x} y2={pointerPos.y}
-                stroke="#f59e0b" strokeWidth={3} strokeDasharray="4 2" opacity={0.6} />
+                className="stroke-[#f59e0b] stroke-[3] [stroke-dasharray:4_2] opacity-60" />
             )}
 
             {grid.map((letter, i) => {
@@ -443,34 +415,33 @@ export default function WordGame() {
               const canConnect = !inPath && path.length > 0 && adj(path[path.length - 1], i) && dragging.current;
               return (
                 <g key={i} transform={`translate(${x},${y})`}>
-                  <rect width={TILE} height={TILE} rx={8}
-                    fill={isLast ? "#f59e0b" : inPath ? "#fbbf24" : canConnect ? "#d1d5db" : "#f5f0dc"}
-                    stroke={isLast ? "#000" : inPath ? "#444" : "transparent"}
-                    strokeWidth={1} />
+                  <rect width={TILE} height={TILE} rx={8} className={`stroke-1 ${
+                    isLast ? "fill-[#f59e0b] stroke-black" : 
+                    inPath ? "fill-[#fbbf24] stroke-[#444]" : 
+                    canConnect ? "fill-[#d1d5db] stroke-transparent" : "fill-paper stroke-transparent"
+                  }`} />
                   <text x={TILE/2} y={TILE/2+1} textAnchor="middle" dominantBaseline="central"
-                    fontSize={16} fontWeight={800} fill="#000"
-                    fontFamily="system-ui,sans-serif">{letter}</text>
+                    className="text-[16px] font-extrabold fill-black font-sans">{letter}</text>
                 </g>
               );
             })}
           </svg>
         </div>
 
-        <div style={{ width:"100%", maxWidth:W, marginTop:8 }}>
-          <div style={{ color:"#555", fontSize:11, marginBottom:4 }}>{found.length} ord funnet</div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:3, maxHeight:160, overflowY:"auto" }}>
+        <div className="w-full mt-2 max-w-[368px]">
+          <div className="text-[#555] text-[11px] mb-1">{found.length} ord funnet</div>
+          <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto">
             {found.map((f, i) => (
-              <span key={i} style={{ background:"#1e1e1e", border:"1px solid #333",
-                borderRadius:20, padding:"2px 8px", fontSize:11, color:"#ccc" }}>
-                {f.word} <span style={{ color:"#4ade80" }}>{f.score}</span>
+              <span key={i} className="bg-[#1e1e1e] border border-[#333] rounded-[20px] px-2 py-0.5 text-[11px] text-[#ccc]">
+                {f.word} <span className="text-bonus">{f.score}</span>
               </span>
             ))}
           </div>
         </div>
       </>)}
 
-      <footer style={{ marginTop: "auto", paddingTop: 40, textAlign: "center" }}>
-        <p style={{ fontSize: 11, color: "#555", maxWidth: 280, lineHeight: 1.5 }}>
+      <footer className="mt-auto pt-10 text-center">
+        <p className="text-[11px] text-[#555] max-w-[280px] leading-relaxed">
           Ordboksdata er levert av Universitetet i Bergen og Språkrådet.
         </p>
       </footer>
