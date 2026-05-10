@@ -169,6 +169,7 @@ export default function WordGame() {
   const dragging = useRef(false);
   const svgRef = useRef(null);
   const msgTimer = useRef(null);
+  const validationCache = useRef({});
 
   useEffect(() => {
     const saved = localStorage.getItem("ordkobling-best");
@@ -197,37 +198,47 @@ export default function WordGame() {
 
   const word = path.map(i => grid[i]).join("");
 
-  const submitWord = useCallback(async (p) => {
-    const w = p.map(i => grid[i]).join("");
-    if (w.length < 3) { setPath([]); dragging.current = false; return; }
+  const submitWord = useCallback(async (w) => {
+    if (w.length < 3) return;
+
     if (found.find(f => f.word === w)) {
       showMsg("Allerede funnet!", "warn");
-      setPath([]); dragging.current = false; return;
+      return;
     }
+
+    // Check client-side cache first for instant results
+    if (validationCache.current[w] !== undefined) {
+      handleValidationResult(w, validationCache.current[w]);
+      return;
+    }
+
     setChecking(true);
     try {
       const ok = await validateWord(w.toLowerCase());
-      if (ok) {
-        const baseScore = wordScore(w);
-        const s = baseScore + calculateBonus(w);
-        setFound(prev => [...prev, { word: w, score: s }]);
-        setScore(prev => prev + s);
-
-        if (w.length > 10) {
-          setTada(w);
-          setTimeout(() => setTada(null), 3000);
-        }
-        showMsg(w.length >= 8 ? `BONUSORD! +${s} poeng! ★` : `+${s} poeng! ✓`, "ok");
-      } else {
-        showMsg(`"${w}" er ikke et ord`, "bad");
-      }
+      validationCache.current[w] = ok;
+      handleValidationResult(w, ok);
     } catch {
       showMsg("Feil – prøv igjen", "bad");
     }
     setChecking(false);
-    setPath([]);
-    dragging.current = false;
   }, [grid, found]);
+
+  const handleValidationResult = (w, ok) => {
+    if (ok) {
+      const baseScore = wordScore(w);
+      const s = baseScore + calculateBonus(w);
+      setFound(prev => [...prev, { word: w, score: s }]);
+      setScore(prev => prev + s);
+
+      if (w.length > 10) {
+        setTada(w);
+        setTimeout(() => setTada(null), 3000);
+      }
+      showMsg(w.length >= 8 ? `BONUSORD! +${s} poeng! ★` : `+${s} poeng! ✓`, "ok");
+    } else {
+      showMsg(`"${w}" er ikke et ord`, "bad");
+    }
+  };
 
   const getSVGPoint = (e) => {
     const svg = svgRef.current;
@@ -295,8 +306,13 @@ export default function WordGame() {
 
   const onEnd = () => {
     if (!dragging.current) return;
-    submitWord(path.slice());
+    const finalWord = word; // Captured from the derived 'word' variable
+    dragging.current = false;
+    setPath([]);
     setPointerPos(null);
+    if (finalWord.length >= 3) {
+      submitWord(finalWord);
+    }
   };
 
   const W = COLS * (TILE + GAP) - GAP;
