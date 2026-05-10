@@ -142,6 +142,11 @@ export function wordScore(word) {
   return word.split("").reduce((s, c) => s + (LETTER_SCORES[c] || 1), 0);
 }
 
+export function calculateBonus(word) {
+  const isHidden = BONUS_WORDS.includes(word.toUpperCase());
+  return (word.length >= 8 ? 5 : 0) + (isHidden ? 10 : 0);
+}
+
 async function validateWord(word) {
   const res = await fetch(`/api/validate?word=${encodeURIComponent(word)}`);
   const data = await res.json();
@@ -204,8 +209,7 @@ export default function WordGame() {
       const ok = await validateWord(w.toLowerCase());
       if (ok) {
         const baseScore = wordScore(w);
-        const bonus = (w.length >= 8 ? 5 : 0) + (BONUS_WORDS.includes(w) ? 10 : 0);
-        const s = baseScore + bonus;
+        const s = baseScore + calculateBonus(w);
         setFound(prev => [...prev, { word: w, score: s }]);
         setScore(prev => prev + s);
 
