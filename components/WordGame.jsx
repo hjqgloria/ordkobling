@@ -23,45 +23,8 @@ function shuffle(array) {
 
 function genGrid() {
   const grid = new Array(TOTAL).fill(null);
-  const protectedIndices = new Set();
 
-  // Step 1: checkerboard of vowels and consonants
-  // Step 0: Inject 3 random long bonus words
-  const wordsToPlace = [];
-  const bonusWordIndices = new Set();
-  while (bonusWordIndices.size < 3 && bonusWordIndices.size < BONUS_WORDS.length) {
-    bonusWordIndices.add(Math.floor(Math.random() * BONUS_WORDS.length));
-  }
-  for (const index of bonusWordIndices) {
-    wordsToPlace.push(BONUS_WORDS[index]);
-  }
-  shuffle(wordsToPlace); // Shuffle the selected 3 words to randomize placement order
-  let placedCount = 0;
-  
-  for (const word of wordsToPlace) {
-    if (placedCount >= 3) break;
-    const horizontal = Math.random() > 0.5;
-    const r = Math.floor(Math.random() * (horizontal ? ROWS : ROWS - word.length));
-    const c = Math.floor(Math.random() * (horizontal ? COLS - word.length : COLS));
-    
-    // Check if space is clear
-    let canPlace = true;
-    for (let i = 0; i < word.length; i++) {
-      const idx = horizontal ? (r * COLS + (c + i)) : ((r + i) * COLS + c);
-      if (grid[idx] !== null) { canPlace = false; break; }
-    }
-
-    if (canPlace) {
-      for (let i = 0; i < word.length; i++) {
-        const idx = horizontal ? (r * COLS + (c + i)) : ((r + i) * COLS + c);
-        grid[idx] = word[i];
-        protectedIndices.add(idx);
-      }
-      placedCount++;
-    }
-  }
-
-  // Step 1: Fill remaining with checkerboard of vowels and consonants
+  // 1. Lag et grunnleggende rutenett med vokaler og konsonanter (checkerboard)
   const vowelPool = [];
   const consonantPool = [];
   while (vowelPool.length < TOTAL) vowelPool.push(...VOWELS);
@@ -69,44 +32,53 @@ function genGrid() {
   shuffle(vowelPool);
   shuffle(consonantPool);
 
-  let vi = 0, ci = 0;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const i = r * COLS + c;
-      if (grid[i] !== null) continue;
-      grid[i] = (r + c) % 2 === 0 ? vowelPool[vi++] : consonantPool[ci++];
+      grid[r * COLS + c] = (r + c) % 2 === 0 ? vowelPool.pop() : consonantPool.pop();
     }
   }
 
-  // Step 2: place common Norwegian pairs in random adjacent spots
-  const pairCount = 14;
-  const usedPairs = new Set();
-  let attempts = 0;
-  while (usedPairs.size < pairCount && attempts < 200) {
-    attempts++;
-    const pair = COMMON_PAIRS[Math.floor(Math.random() * COMMON_PAIRS.length)];
-    const r = Math.floor(Math.random() * ROWS);
-    const c = Math.floor(Math.random() * (COLS - 1));
-    const i = r * COLS + c;
-    const j = i + 1;
-    const key = `${i}-${j}`;
-    // Check if the cells are empty before placing a common pair
-    if (!usedPairs.has(key) && grid[i] === null && grid[j] === null) {
-      grid[i] = pair[0];
-      grid[j] = pair[1];
-      usedPairs.add(key);
+  // 2. Erstatt tilfeldige vokaler med Æ, Ø, Å for å sikre norske tegn
+  ["Æ", "Ø", "Å"].forEach(ch => {
+    const vowelIndices = [];
+    grid.forEach((l, i) => { if ("AEIOU".includes(l)) vowelIndices.push(i); });
+    shuffle(vowelIndices);
+    for (let i = 0; i < 5 && i < vowelIndices.length; i++) {
+      grid[vowelIndices[i]] = ch;
     }
-  }
+  });
 
-  // Step 3: guarantee at least 5 of each Norwegian char
-  ["Æ","Ø","Å"].forEach(ch => {
-    let count = grid.filter(l => l === ch).length;
-    while (count < 5) {
-      const idx = grid.findIndex((l, i) =>
-        "AEI".includes(l) && !usedPairs.has(`${i}-${i+1}`) && 
-        !protectedIndices.has(i) && Math.random() < 0.05
-      );
-      if (idx >= 0) { grid[idx] = ch; count++; }
+  // 3. Velg ut 3 bonusord og overskriv rutenettet med disse
+  const protectedIndices = new Set();
+  const wordsToPlace = [];
+  const bIndices = new Set();
+  while (bIndices.size < 3 && bIndices.size < BONUS_WORDS.length) {
+    bIndices.add(Math.floor(Math.random() * BONUS_WORDS.length));
+  }
+  bIndices.forEach(idx => wordsToPlace.push(BONUS_WORDS[idx].trim().toUpperCase()));
+
+  wordsToPlace.forEach(word => {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const horizontal = Math.random() > 0.5;
+      const r = Math.floor(Math.random() * (horizontal ? ROWS : ROWS - word.length + 1));
+      const c = Math.floor(Math.random() * (horizontal ? COLS - word.length + 1 : COLS));
+      
+      const targetIndices = [];
+      let ok = true;
+      for (let i = 0; i < word.length; i++) {
+        const idx = horizontal ? (r * COLS + (c + i)) : ((r + i) * COLS + c);
+        // Sjekk at vi ikke overskriver et annet bonusord
+        if (protectedIndices.has(idx)) { ok = false; break; }
+        targetIndices.push(idx);
+      }
+
+      if (ok) {
+        targetIndices.forEach((idx, i) => {
+          grid[idx] = word[i];
+          protectedIndices.add(idx);
+        });
+        break; // Ordet er plassert, gå til neste ord
+      }
     }
   });
 
