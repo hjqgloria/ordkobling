@@ -452,6 +452,12 @@ export default function WordGame() {
           </div>
         </div>
       </>)}
+
+      <footer style={{ marginTop: "auto", paddingTop: 40, textAlign: "center" }}>
+        <p style={{ fontSize: 11, color: "#555", maxWidth: 280, lineHeight: 1.5 }}>
+          Ordboksdata er levert av Universitetet i Bergen og Språkrådet.
+        </p>
+      </footer>
     </div>
   );
 }
