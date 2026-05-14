@@ -178,7 +178,10 @@ export async function validateWord(word) {
 
 export function getSVGPoint(svg, e) {
   const pt = svg.createSVGPoint();
-  pt.x = e.clientX;
-  pt.y = e.clientY;
+  // Handle both MouseEvents and TouchEvents
+  const touch = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
+  pt.x = touch.clientX;
+  pt.y = touch.clientY;
+
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }

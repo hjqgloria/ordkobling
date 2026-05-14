@@ -140,6 +140,7 @@ export function useGameState() {
 
   const onPointerDown = (e) => {
     if (phase !== "play") return;
+    if (e.cancelable) e.preventDefault();
     const svg = svgRef.current;
     if (!svg) return;
     const pt = getSVGPoint(svg, e);
@@ -153,6 +154,7 @@ export function useGameState() {
 
   const onPointerMove = (e) => {
     if (!dragging.current || phase !== "play") return;
+    if (e.cancelable) e.preventDefault();
     const svg = svgRef.current;
     if (!svg) return;
     const pt = getSVGPoint(svg, e);
@@ -173,8 +175,9 @@ export function useGameState() {
     setPath([...path, idx]);
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e) => {
     if (phase !== "play") return;
+    if (e && e.cancelable) e.preventDefault();
     dragging.current = false;
     if (path.length >= 3) submitWord(word);
     else setPath([]);
