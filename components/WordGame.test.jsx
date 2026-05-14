@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { wordScore, adj, genGrid, calculateBonus } from './WordGame';
+import { wordScore, adj, genGrid, calculateBonus } from './gameLogic';
 import BONUS_WORDS from './bonus_words.json';
 
 describe('WordGame Logic Engine', () => {

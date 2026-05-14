@@ -1,6 +1,25 @@
 # Ordkobling
+A professional Norwegian word connection game built with modern web technologies and a focus on performance and high-precision interaction.
 
-A Norwegian word connection game built with Next.js 16.
+## Tech Stack & Architecture
+
+- **Runtime**: [Node.js v24](https://nodejs.org/) (managed via `fnm`)
+- **Framework**: Next.js 16 (App Router)
+- **Styling**: Tailwind CSS v4 (using the new CSS-first engine)
+- **State Management**: React 19 Hooks (`useState`, `useEffect`, `useRef`, `useCallback`)
+- **Testing**: Vitest and JSDOM
+- **Package Manager**: pnpm
+
+### Core Logic
+- **Grid Generation**: Algorithmic checkerboard generation with protected "Snake-style" bonus word injection.
+- **Interaction Engine**: Mathematical hit-detection with magnetic snapping and backtracking support.
+- **API Layer**: Server-side proxy for the University of Bergen's Ordbøkene API to ensure dictionary validation.
+- **Persistence**: Local high-score tracking via `localStorage`.
+
+## Project Structure
+- `/app`: App Router pages and API routes for dictionary validation.
+- `/components`: React UI components and main game logic.
+- `/__tests__`: Unit test suites for core logic (scoring, adjacency, grid generation).
 
 ## Development Setup
 
@@ -8,16 +27,22 @@ This project uses **fnm** for Node version management and **pnpm** for package m
 
 ## Getting Started
 
-1. Ensure the correct Node version is active:
+1. **Node Version**: Ensure the correct Node version is active:
    ```bash
    fnm use
    ```
-
-2. Install dependencies and start the server:
-```bash
-pnpm install
-pnpm dev
-```
+2. **Dependencies**: Install the project dependencies:
+   ```bash
+   pnpm install
+   ```
+3. **Development**: Start the local development server:
+   ```bash
+   pnpm dev
+   ```
+4. **Testing**: Run the unit test suite:
+   ```bash
+   pnpm test
+   ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
