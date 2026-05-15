@@ -92,7 +92,7 @@ export function useGameState() {
       showMsg(w.length >= 8 ? `BONUSORD! +${totalScore} poeng! ★` : `+${totalScore} poeng! ✓`, "ok");
     } else {
       setPath([]);
-      // if (isSoundOn) invalidWordSound.current?.play().catch(() => {});
+      if (isSoundOn) invalidWordSound.current?.play().catch(() => {});
       showMsg(`"${w}" er ikke et ord`, "bad");
     }
   }, [isSoundOn, wordScore, calculateBonus, showMsg]);
@@ -102,6 +102,7 @@ export function useGameState() {
 
     if (found.find(f => f.word === w)) {
       showMsg("Allerede funnet!", "warn");
+      if (isSoundOn) invalidWordSound.current?.play().catch(() => {});
       setPath([]);
       return;
     }
@@ -124,7 +125,7 @@ export function useGameState() {
       showMsg("Feil – prøv igjen", "bad");
     }
     setChecking(false);
-  }, [found, handleValidationResult]);
+  }, [found, handleValidationResult, isSoundOn]);
 
   const startGame = (newGrid = false) => {
     setScore(0);
