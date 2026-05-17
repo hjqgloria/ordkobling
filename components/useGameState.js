@@ -7,7 +7,9 @@ export function useGameState() {
   const [found, setFound] = useState([]);
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
+  const [playerName, setPlayerName] = useState("");
   const [timeLeft, setTimeLeft] = useState(120);
+  const [leaderboard, setLeaderboard] = useState([]);
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [phase, setPhase] = useState("start");
   const [msg, setMsg] = useState("");
@@ -26,12 +28,24 @@ export function useGameState() {
   const svgRef = useRef(null);
   const msgTimer = useRef(null);
   const validationCache = useRef(new Map());
+  const hasUnlockedAudio = useRef(false);
+
+  const playSound = useCallback((audioRef) => {
+    if (!isSoundOn || !audioRef.current) return;
+    // Resetting currentTime is crucial for iOS to restart the sound immediately
+    audioRef.current.currentTime = 0;
+    audioRef.current.play().catch((err) => {
+      console.warn("Audio playback blocked or failed:", err);
+    });
+  }, [isSoundOn]);
 
   useEffect(() => {
     setMounted(true);
     setGrid(genGrid());
     const saved = localStorage.getItem("ordkobling-best");
     if (saved) setHighScore(parseInt(saved, 10));
+    const savedName = localStorage.getItem("ordkobling-player-name");
+    if (savedName) setPlayerName(savedName);
   }, []);
 
   useEffect(() => {
@@ -57,7 +71,7 @@ export function useGameState() {
         }, 1500);
       }
       dragging.current = false;
-      if (isSoundOn) gameFinishSound.current?.play().catch(() => {});
+      playSound(gameFinishSound);
       return;
     }
     const t = setTimeout(() => setTimeLeft(p => p - 1), 1000);
@@ -80,29 +94,30 @@ export function useGameState() {
       setFound(prev => [...prev, { word: w, score: totalScore, bonus }]);
       setScore(s => s + totalScore);
       setPath([]);
-      if (isSoundOn) {
-        if (bonus > 0) bonusSound.current?.play().catch(() => {});
-        else foundWordSound.current?.play().catch(() => {});
+      if (bonus > 0) {
+        playSound(bonusSound);
+      } else {
+        playSound(foundWordSound);
       }
       if (w.length >= 8) {
         setTada(w);
-        if (isSoundOn) tadaSound.current?.play().catch(() => {});
+        playSound(tadaSound);
         setTimeout(() => setTada(null), 3000);
       }
       showMsg(w.length >= 8 ? `BONUSORD! +${totalScore} poeng! ★` : `+${totalScore} poeng! ✓`, "ok");
     } else {
       setPath([]);
-      if (isSoundOn) invalidWordSound.current?.play().catch(() => {});
+      playSound(invalidWordSound);
       showMsg(`"${w}" er ikke et ord`, "bad");
     }
-  }, [isSoundOn, wordScore, calculateBonus, showMsg]);
+  }, [wordScore, calculateBonus, showMsg, playSound]);
 
   const submitWord = useCallback(async (w) => {
     if (w.length < 3) return;
 
     if (found.find(f => f.word === w)) {
       showMsg("Allerede funnet!", "warn");
-      if (isSoundOn) invalidWordSound.current?.play().catch(() => {});
+      playSound(invalidWordSound);
       setPath([]);
       return;
     }
@@ -125,7 +140,7 @@ export function useGameState() {
       showMsg("Feil – prøv igjen", "bad");
     }
     setChecking(false);
-  }, [found, handleValidationResult, isSoundOn]);
+  }, [found, handleValidationResult, playSound]);
 
   const startGame = (newGrid = false) => {
     setScore(0);
@@ -139,9 +154,62 @@ export function useGameState() {
 
   const onStart = () => startGame(false);
 
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      const res = await fetch('/api/leaderboard');
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      setLeaderboard(data.leaderboard || []);
+    } catch (e) {
+      console.error('Failed to load leaderboard', e);
+      setLeaderboard([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    fetchLeaderboard();
+  }, [mounted, fetchLeaderboard]);
+
+  const submitToLeaderboard = async (name) => {
+    const resolvedName = (name || playerName || "").trim();
+    if (!resolvedName || score <= 0) return;
+
+    try {
+      const res = await fetch('/api/leaderboard', {
+        method: 'POST',
+        body: JSON.stringify({ name: resolvedName, score }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) throw new Error('Submit failed');
+      setPlayerName(resolvedName);
+      localStorage.setItem("ordkobling-player-name", resolvedName);
+      setIsNewRecord(false); // Hide the input after submission
+      fetchLeaderboard();
+    } catch (e) {
+      console.error("Submission failed", e);
+      showMsg('Kunne ikke sende topplisten', 'bad');
+    }
+  };
+
   const onPointerDown = (e) => {
     if (phase !== "play") return;
     if (e.cancelable) e.preventDefault();
+
+    // iOS Audio Unlock: Play and immediately pause all sounds on the first user interaction.
+    // This "blesses" the audio objects so they can be played later, even in async callbacks.
+    if (!hasUnlockedAudio.current) {
+      [foundWordSound, invalidWordSound, tadaSound, bonusSound, gameFinishSound].forEach(ref => {
+        if (ref.current) {
+          ref.current.play().then(() => {
+            ref.current.pause();
+            ref.current.currentTime = 0;
+          }).catch(() => {});
+        }
+      });
+      hasUnlockedAudio.current = true;
+    }
+
     const svg = svgRef.current;
     if (!svg) return;
     const pt = getSVGPoint(svg, e);
@@ -195,6 +263,9 @@ export function useGameState() {
     found,
     score,
     highScore,
+    playerName,
+    setPlayerName,
+    leaderboard,
     isNewRecord,
     timeLeft,
     phase,
@@ -219,6 +290,7 @@ export function useGameState() {
     validationCache,
     showMsg,
     word,
+    submitToLeaderboard,
     submitWord,
     handleValidationResult,
     onStart,

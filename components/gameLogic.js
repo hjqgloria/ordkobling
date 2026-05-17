@@ -75,24 +75,7 @@ export function genGrid() {
     }
   }
 
-  // Step 1: Fill remaining with checkerboard of vowels and consonants
-  const vowelPool = [];
-  const consonantPool = [];
-  while (vowelPool.length < TOTAL) vowelPool.push(...VOWELS);
-  while (consonantPool.length < TOTAL) consonantPool.push(...CONSONANTS);
-  shuffle(vowelPool);
-  shuffle(consonantPool);
-
-  let vi = 0, ci = 0;
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const i = r * COLS + c;
-      if (grid[i] !== null) continue;
-      grid[i] = (r + c) % 2 === 0 ? vowelPool[vi++] : consonantPool[ci++];
-    }
-  }
-
-  // Step 2: place common Norwegian pairs in random adjacent spots
+  // Step 1: place common Norwegian pairs in random adjacent spots
   const pairCount = Math.floor(TOTAL / 7);
   const usedPairs = new Set();
   let attempts = 0;
@@ -108,6 +91,23 @@ export function genGrid() {
       grid[i] = pair[0];
       grid[j] = pair[1];
       usedPairs.add(key);
+    }
+  }
+
+  // Step 1: Fill remaining with checkerboard of vowels and consonants
+  const vowelPool = [];
+  const consonantPool = [];
+  while (vowelPool.length < TOTAL) vowelPool.push(...VOWELS);
+  while (consonantPool.length < TOTAL) consonantPool.push(...CONSONANTS);
+  shuffle(vowelPool);
+  shuffle(consonantPool);
+
+  let vi = 0, ci = 0;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const i = r * COLS + c;
+      if (grid[i] !== null) continue;
+      grid[i] = (r + c) % 2 === 0 ? vowelPool[vi++] : consonantPool[ci++];
     }
   }
 

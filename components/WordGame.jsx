@@ -49,6 +49,8 @@ export default function WordGame() {
         phase={gameState.phase}
         score={gameState.score}
         highScore={gameState.highScore}
+        playerName={gameState.playerName}
+        leaderboard={gameState.leaderboard}
         isNewRecord={gameState.isNewRecord}
         timeLeft={gameState.timeLeft}
         msg={gameState.msg}
@@ -60,6 +62,8 @@ export default function WordGame() {
         onToggleSound={gameState.onToggleSound}
         onStart={gameState.onStart}
         startGame={gameState.startGame}
+        submitToLeaderboard={gameState.submitToLeaderboard}
+        setPlayerName={gameState.setPlayerName}
       />
 
       <footer className="mt-auto pt-10 text-center">

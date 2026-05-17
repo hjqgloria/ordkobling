@@ -40,6 +40,8 @@ export default function GameStatus({
   phase,
   score,
   highScore,
+  playerName,
+  leaderboard,
   isNewRecord,
   timeLeft,
   msg,
@@ -50,7 +52,9 @@ export default function GameStatus({
   isSoundOn,
   onToggleSound,
   onStart,
-  startGame
+  startGame,
+  submitToLeaderboard,
+  setPlayerName
 }) {
   const btnClass = "bg-paper text-ink rounded-full px-7 py-3 text-[15px] font-bold transition-transform active:scale-95 cursor-pointer";
   const btnSecondaryClass = "bg-transparent text-[#888] border border-[#444] rounded-full px-5 py-3 text-[13px] transition-colors hover:bg-white/5 cursor-pointer";
@@ -75,10 +79,45 @@ export default function GameStatus({
         <p className="text-2xl font-bold text-paper mb-1">Tid ute!</p>
         <div className="text-[11px] text-[#fbbf24] font-bold tracking-widest mb-2">REKORD: {highScore}</div>
         <p className="text-[34px] font-extrabold text-bonus mb-2">{score} poeng</p>
-        {isNewRecord && <p className="text-[#fbbf24] text-xs font-bold -mt-2 mb-2 animate-bounce">NY REKORD!</p>}
+        
+        {isNewRecord && (
+          <div className="mb-4 animate-in fade-in zoom-in duration-300">
+            <p className="text-[#fbbf24] text-xs font-bold mb-2 uppercase">Ny global rekord?</p>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              submitToLeaderboard(playerName || e.target.playerName.value);
+            }} className="flex gap-2">
+              <input
+                name="playerName"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                maxLength={12}
+                minLength={2}
+                required
+                placeholder="Ditt navn"
+                className="bg-ink border border-[#444] rounded-lg px-3 py-2 text-xs text-paper flex-1 outline-none focus:border-bonus"
+              />
+              <button type="submit" className="bg-bonus text-ink text-[10px] font-bold px-3 rounded-lg">Send</button>
+            </form>
+          </div>
+        )}
+
         <p className="text-sm text-[#888] mb-3.5">{found.length} ord funnet</p>
+
+        {leaderboard?.length > 0 && (
+          <div className="mb-4 p-3 bg-black/20 rounded-xl border border-white/5">
+            <p className="text-[10px] font-bold text-[#888] uppercase tracking-tighter mb-2 text-left">Globale Toppscore</p>
+            {leaderboard.map((entry, i) => (
+              <div key={i} className="flex justify-between text-[11px] border-b border-white/5 py-1 last:border-0">
+                <span className="text-paper truncate mr-2">{i+1}. {entry.name}</span>
+                <span className="text-bonus font-mono">{entry.score}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {found.length > 0 && (
-          <div className="mb-4 max-h-40 overflow-y-auto text-left">
+          <div className="mb-4 max-h-32 overflow-y-auto text-left opacity-60">
             {[...found].sort((a, b) => b.score - a.score || b.word.length - a.word.length).map((f, i) => (
               <span key={i} className="inline-block bg-[#2a2a2a] rounded-lg px-2.5 py-1 m-1 text-xs text-paper">
                 {f.word} <span className="text-bonus">({f.score})</span>

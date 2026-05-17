@@ -14,8 +14,10 @@ export async function GET(request) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
+    const API_BASE = process.env.DICTIONARY_API_URL || 'https://ord.uib.no/api/articles';
+    
     const res = await fetch(
-      `https://ord.uib.no/api/articles?w=${encodeURIComponent(word)}&dict=bm,nn&scope=ei`,
+      `${API_BASE}?w=${encodeURIComponent(word)}&dict=bm,nn&scope=ei`,
       { 
         next: { revalidate: 86400 },
         signal: controller.signal 
