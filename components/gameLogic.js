@@ -166,8 +166,22 @@ export function wordScore(word) {
 }
 
 export function calculateBonus(word) {
-  const isHidden = BONUS_WORDS.includes(word.toUpperCase());
-  return (word.length >= 8 ? 5 : 0) + (isHidden ? 10 : 0);
+  const wordLower = word.toLowerCase();
+  const lengthBonus = word.length >= 8 ? 5 : 0;
+  const minRootLength = 3; // Minimum length for a bonus word to be considered a "root"
+
+  const hasBonusMatch = BONUS_WORDS.some(bw => {
+    const bwLower = bw.toLowerCase();
+    if (bwLower === wordLower) return true;
+
+    return (
+      (bwLower.length >= minRootLength && wordLower.startsWith(bwLower)) ||
+      (wordLower.length >= minRootLength && bwLower.startsWith(wordLower))
+    ) && Math.abs(wordLower.length - bwLower.length) <= 3;
+  });
+
+  // Always return the length bonus plus the hidden word bonus if a match was found
+  return lengthBonus + (hasBonusMatch ? 10 : 0);
 }
 
 export async function validateWord(word) {

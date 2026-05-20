@@ -9,7 +9,7 @@ export default function WordGame() {
   if (!gameState.mounted) return <div className="bg-ink min-h-screen" />;
 
   return (
-    <div className="overflow-y-auto bg-ink min-h-screen flex flex-col items-center p-3 pb-10 font-sans select-none">
+    <div className="overflow-y-auto bg-ink min-h-[100dvh] flex flex-col items-center p-3 pb-10 font-sans select-none [-webkit-tap-highlight-color:transparent]">
       <h1 className="text-paper text-xl font-bold mb-2 tracking-widest">
         ORDKOBLING
       </h1>

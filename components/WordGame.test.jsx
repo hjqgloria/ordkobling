@@ -52,11 +52,40 @@ describe('WordGame Logic Engine', () => {
       expect(typeof BONUS_WORDS[0]).toBe('string');
     });
 
-    it('calculates the +10 hidden word bonus correctly', () => {
-      const hiddenWord = BONUS_WORDS[0];
-      // Should return 10 (hidden bonus) + 5 (if length >= 8)
-      const expectedBonus = hiddenWord.length >= 8 ? 15 : 10;
-      expect(calculateBonus(hiddenWord)).toBe(expectedBonus);
+    it('calculates the +10 bonus for exact bonus words, plus +5 if long', () => {
+      // Find a bonus word that is >= 8 chars for full bonus test
+      const longBonusWord = BONUS_WORDS.find(w => w.length >= 8) || "ABSOLUTT"; // Fallback if none found
+      expect(calculateBonus(longBonusWord)).toBe(15); // 10 (exact) + 5 (long)
+
+      // Find a bonus word that is < 8 chars for basic bonus test
+      const shortBonusWord = BONUS_WORDS.find(w => w.length < 8) || "HELSE"; // Fallback
+      expect(calculateBonus(shortBonusWord)).toBe(10); // 10 (exact)
+    });
+
+    it('awards a +10 bonus for inflected forms of bonus words (root match)', () => {
+      // Assuming "PLANLAGT" is in BONUS_WORDS and "PLANLAGTE" is an inflected form
+      const bonusWordRoot = "PLANLAGT";
+      const inflectedWord = "PLANLAGTE"; // Not an exact match, but a root match
+
+      expect(BONUS_WORDS).toContain(bonusWordRoot); // Ensure the root word is in the list
+      expect(BONUS_WORDS).not.toContain(inflectedWord.toUpperCase()); // Ensure it's not an exact match
+      expect(calculateBonus(inflectedWord)).toBe(15); // 10 (root match) + 5 (length >= 8)
+    });
+
+    it('validates total points for "naturlig" vs "naturlige"', () => {
+      // "NATURLIG" (8 chars): N(1)+A(1)+T(1)+U(3)+R(1)+L(1)+I(1)+G(3) = 12
+      // Bonus: 10 (root) + 5 (len >= 8) = 15. Total = 27.
+      const word1 = "NATURLIG";
+      const totalScore1 = wordScore(word1) + calculateBonus(word1);
+      
+      // "NATURLIGE" (9 chars): Previous 12 + E(1) = 13
+      // Bonus: 10 (root) + 5 (len >= 8) = 15. Total = 28.
+      const word2 = "NATURLIGE";
+      const totalScore2 = wordScore(word2) + calculateBonus(word2);
+
+      expect(totalScore1).toBe(27);
+      expect(totalScore2).toBe(28);
+      expect(totalScore2).toBeGreaterThan(totalScore1);
     });
 
     it('awards a +5 bonus for long words not in the hidden list', () => {
