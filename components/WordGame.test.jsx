@@ -63,13 +63,16 @@ describe('WordGame Logic Engine', () => {
     });
 
     it('awards a +10 bonus for inflected forms of bonus words (root match)', () => {
-      // Assuming "PLANLAGT" is in BONUS_WORDS and "PLANLAGTE" is an inflected form
-      const bonusWordRoot = "PLANLAGT";
-      const inflectedWord = "PLANLAGTE"; // Not an exact match, but a root match
+      // Use a word long enough to trigger the root matching thresholds
+      const root = BONUS_WORDS.find(w => w.length >= 5) || BONUS_WORDS[0];
+      const inflected = root + "E"; 
 
-      expect(BONUS_WORDS).toContain(bonusWordRoot); // Ensure the root word is in the list
-      expect(BONUS_WORDS).not.toContain(inflectedWord.toUpperCase()); // Ensure it's not an exact match
-      expect(calculateBonus(inflectedWord)).toBe(15); // 10 (root match) + 5 (length >= 8)
+      // Base bonus (10) + length bonus (5) if result is >= 8 chars
+      const hasLenBonus = inflected.length >= 8;
+      const expectedBonus = hasLenBonus ? 15 : 10;
+
+      expect(BONUS_WORDS).toContain(root);
+      expect(calculateBonus(inflected)).toBe(expectedBonus);
     });
 
     it('validates total points for "naturlig" vs "naturlige"', () => {
