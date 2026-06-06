@@ -187,6 +187,18 @@ export function useGameState() {
     fetchLeaderboard();
   }, [mounted, fetchLeaderboard]);
 
+  // Keep the local REKORD in sync with the player's best on TODAY'S server
+  // board, so a returning player isn't falsely told a lower score is a new
+  // record. Runs while the board/name are known (i.e. before a game ends).
+  useEffect(() => {
+    const me = playerName.trim().toLowerCase();
+    if (!me) return;
+    const mine = dailyLeaderboard.find(e => String(e.name).toLowerCase() === me);
+    if (mine && Number.isFinite(mine.score)) {
+      setHighScore(prev => Math.max(prev, mine.score));
+    }
+  }, [dailyLeaderboard, playerName]);
+
   const submitToLeaderboard = async (name) => {
     const resolvedName = (name || playerName || "").trim();
     if (!resolvedName || score <= 0) return;
