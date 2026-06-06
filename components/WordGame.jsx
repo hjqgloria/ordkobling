@@ -50,8 +50,9 @@ export default function WordGame() {
         score={gameState.score}
         highScore={gameState.highScore}
         playerName={gameState.playerName}
-        leaderboard={gameState.leaderboard}
-        isNewRecord={gameState.isNewRecord}
+        dailyLeaderboard={gameState.dailyLeaderboard}
+        allTimeLeaderboard={gameState.allTimeLeaderboard}
+        submitted={gameState.submitted}
         timeLeft={gameState.timeLeft}
         msg={gameState.msg}
         msgType={gameState.msgType}

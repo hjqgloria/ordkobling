@@ -1,7 +1,25 @@
 import { NextResponse } from "next/server";
 import redis from "@/lib/redis";
 
-const LEADERBOARD_KEY = "ordkobling:leaderboard";
+const ALLTIME_KEY = "ordkobling:leaderboard";
+const DAILY_PREFIX = "ordkobling:daily:";
+const DAILY_TTL = 60 * 60 * 48; // 48h — the per-day key only needs to outlive its own day
+const TOP_N = 10;
+
+// Current puzzle day (YYYY-MM-DD) in Europe/Oslo, computed server-side so the
+// client cannot post into a different day's board.
+function osloDateKey(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Oslo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function dailyKey(date = new Date()) {
+  return `${DAILY_PREFIX}${osloDateKey(date)}`;
+}
 
 // Minimal profanity list — extend as needed. Stored here to avoid extra dependencies.
 const PROFANITY = [
@@ -14,23 +32,46 @@ function containsProfanity(s) {
   return PROFANITY.some(w => lower.includes(w));
 }
 
+// Read the top entries of a sorted set (highest first) as [{ name, score }].
+async function topScores(key) {
+  let result;
+  if (typeof redis.zrange === 'function') {
+    result = await redis.zrange(key, 0, TOP_N - 1, { rev: true, withScores: true });
+  } else {
+    result = await redis.sendCommand(["ZREVRANGE", key, "0", String(TOP_N - 1), "WITHSCORES"]);
+  }
+  const out = [];
+  for (let i = 0; i < (result || []).length; i += 2) {
+    out.push({ name: result[i], score: Number(result[i + 1]) || 0 });
+  }
+  return out;
+}
+
+// Add a score keeping only the player's highest (ZADD ... GT).
+async function addHighScore(key, score, member) {
+  if (typeof redis.zadd === 'function') {
+    await redis.zadd(key, { gt: true }, { score, member });
+  } else {
+    await redis.sendCommand(["ZADD", key, "GT", score.toString(), member]);
+  }
+}
+
+async function expire(key, seconds) {
+  if (typeof redis.expire === 'function') {
+    await redis.expire(key, seconds);
+  } else {
+    await redis.sendCommand(["EXPIRE", key, String(seconds)]);
+  }
+}
+
 export async function GET() {
   try {
-    let result;
-    if (typeof redis.zrange === 'function') {
-      result = await redis.zrange(LEADERBOARD_KEY, 0, 9, { rev: true, withScores: true });
-    } else {
-      result = await redis.sendCommand(["ZREVRANGE", LEADERBOARD_KEY, "0", "9", "WITHSCORES"]);
-    }
-
-    const leaderboard = [];
-    for (let i = 0; i < (result || []).length; i += 2) {
-      leaderboard.push({
-        name: result[i],
-        score: Number(result[i + 1]) || 0,
-      });
-    }
-    return NextResponse.json({ leaderboard });
+    const date = osloDateKey();
+    const [daily, allTime] = await Promise.all([
+      topScores(dailyKey()),
+      topScores(ALLTIME_KEY),
+    ]);
+    return NextResponse.json({ date, daily, allTime });
   } catch (error) {
     console.error("Leaderboard GET error", error);
     return NextResponse.json({ error: "Failed to load leaderboard" }, { status: 500 });
@@ -57,11 +98,7 @@ export async function POST(req) {
       let c;
       if (typeof redis.incr === 'function') {
         c = await redis.incr(rateKey);
-        if (c === 1 && typeof redis.expire === 'function') {
-          await redis.expire(rateKey, 60);
-        } else if (c === 1) {
-          await redis.sendCommand(['EXPIRE', rateKey, '60']);
-        }
+        if (c === 1) await expire(rateKey, 60);
       } else {
         c = await redis.sendCommand(['INCR', rateKey]);
         if (c === 1) await redis.sendCommand(['EXPIRE', rateKey, '60']);
@@ -94,25 +131,15 @@ export async function POST(req) {
     if (containsProfanity(name)) {
       return NextResponse.json({ error: "Name contains restricted content" }, { status: 400 });
     }
-    
-    // If you want "User" and "user" to be the same person, 
-    // use a lowercase version for the Redis key/member.
+
+    // Treat "User" and "user" as the same person for the score key/member.
     const lookupName = name.toLowerCase();
 
-    let currentScoreRaw;
-    if (typeof redis.zscore === 'function') {
-      currentScoreRaw = await redis.zscore(LEADERBOARD_KEY, lookupName);
-    } else {
-      currentScoreRaw = await redis.sendCommand(["ZSCORE", LEADERBOARD_KEY, lookupName]);
-    }
-    const currentScore = currentScoreRaw ? Number(currentScoreRaw) : null;
-    if (currentScore === null || score > currentScore) {
-      if (typeof redis.zadd === 'function') {
-        await redis.zadd(LEADERBOARD_KEY, { score, member: lookupName });
-      } else {
-        await redis.sendCommand(["ZADD", LEADERBOARD_KEY, score.toString(), lookupName]);
-      }
-    }
+    // Daily board (resets each Oslo day via key name + TTL) and all-time best board.
+    const dKey = dailyKey();
+    await addHighScore(dKey, score, lookupName);
+    await expire(dKey, DAILY_TTL);
+    await addHighScore(ALLTIME_KEY, score, lookupName);
 
     return NextResponse.json({ ok: true, name });
   } catch (error) {

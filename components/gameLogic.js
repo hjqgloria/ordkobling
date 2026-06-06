@@ -6,19 +6,67 @@ export const LETTER_SCORES = {
 };
 
 export const VOWELS = "AEIOUYÆØÅ".split("");
-export const CONSONANTS = "BDDFGHJKLMNPRSTV".split("");
+export const CONSONANTS = "BDFGHJKLMNPRSTV".split("");
 export const COMMON_PAIRS = ["ER","EN","ET","ST","NG","AR","OR","AN","IN","RE","LE","NE","DE","TE","SE","ME"];
 export const ROWS = 10, COLS = 10, TOTAL = ROWS * COLS;
 export const TILE = 26, GAP = 12;
 
-export function shuffle(array) {
+// Norwegian special characters worth an extra reward on top of their letter value.
+export const SPECIAL_CHARS = ["Æ", "Ø", "Å"];
+export const SPECIAL_CHAR_BONUS = 3; // points per æ/ø/å in a word
+// Length bonus added to the raw letter sum, indexed by word length.
+// Lengths >= 8 use LONG_WORD_BONUS so longer words reliably outscore short ones.
+export const LENGTH_BONUS = { 3: 0, 4: 2, 5: 5, 6: 9, 7: 14 };
+export const LONG_WORD_BONUS = 20;
+export const HIDDEN_WORD_BONUS = 10; // bonus for matching a hidden "bonus word"
+
+// Seedable PRNG (mulberry32) so a given seed always produces the same sequence.
+export function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Deterministic 32-bit hash of a string, used to turn a date into a PRNG seed.
+export function hashStr(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return h >>> 0;
+}
+
+// The current puzzle day as a YYYY-MM-DD string in Europe/Oslo, so every player
+// shares the same board and it rolls over at midnight Norwegian time.
+export function osloDateKey(date = new Date()) {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Oslo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+// Build the deterministic shared grid for a given puzzle day.
+export function dailyGrid(dateKey = osloDateKey()) {
+  return genGrid(mulberry32(hashStr(dateKey)));
+}
+
+export function shuffle(array, rng = Math.random) {
   for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
 }
 
-export function genGrid() {
+export function genGrid(rng = Math.random) {
   const grid = new Array(TOTAL).fill(null);
   const protectedIndices = new Set();
 
@@ -32,12 +80,12 @@ export function genGrid() {
     let indexSafety = 0;
     while (indices.size < maxSelect && indexSafety < 100) {
       indexSafety++;
-      indices.add(Math.floor(Math.random() * eligibleWords.length));
+      indices.add(Math.floor(rng() * eligibleWords.length));
     }
     indices.forEach(idx => selectedWords.push(eligibleWords[idx].replace(/\s/g, "").toUpperCase()));
   }
 
-  shuffle(selectedWords);
+  shuffle(selectedWords, rng);
   let placedCount = 0;
   
   for (const word of selectedWords) {
@@ -48,12 +96,12 @@ export function genGrid() {
     for (let attempt = 0; attempt < 100; attempt++) {
       if (wordPlaced) break;
 
-      const dr = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
-      const dc = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+      const dr = Math.floor(rng() * 3) - 1; // -1, 0, 1
+      const dc = Math.floor(rng() * 3) - 1; // -1, 0, 1
       if (dr === 0 && dc === 0) continue; // Avoid no movement
 
-      const r = Math.floor(Math.random() * ROWS);
-      const c = Math.floor(Math.random() * COLS);
+      const r = Math.floor(rng() * ROWS);
+      const c = Math.floor(rng() * COLS);
       const endR = r + dr * (word.length - 1);
       const endC = c + dc * (word.length - 1);
 
@@ -75,15 +123,15 @@ export function genGrid() {
     }
   }
 
-  // Step 1: place common Norwegian pairs in random adjacent spots
+  // Step 2: place common Norwegian pairs in random adjacent spots
   const pairCount = Math.floor(TOTAL / 7);
   const usedPairs = new Set();
   let attempts = 0;
   while (usedPairs.size < pairCount && attempts < 200) {
     attempts++;
-    const pair = COMMON_PAIRS[Math.floor(Math.random() * COMMON_PAIRS.length)];
-    const r = Math.floor(Math.random() * ROWS);
-    const c = Math.floor(Math.random() * (COLS - 1));
+    const pair = COMMON_PAIRS[Math.floor(rng() * COMMON_PAIRS.length)];
+    const r = Math.floor(rng() * ROWS);
+    const c = Math.floor(rng() * (COLS - 1));
     const i = r * COLS + c;
     const j = i + 1;
     const key = `${i}-${j}`;
@@ -94,13 +142,13 @@ export function genGrid() {
     }
   }
 
-  // Step 1: Fill remaining with checkerboard of vowels and consonants
+  // Step 3: Fill remaining with checkerboard of vowels and consonants
   const vowelPool = [];
   const consonantPool = [];
   while (vowelPool.length < TOTAL) vowelPool.push(...VOWELS);
   while (consonantPool.length < TOTAL) consonantPool.push(...CONSONANTS);
-  shuffle(vowelPool);
-  shuffle(consonantPool);
+  shuffle(vowelPool, rng);
+  shuffle(consonantPool, rng);
 
   let vi = 0, ci = 0;
   for (let r = 0; r < ROWS; r++) {
@@ -111,15 +159,15 @@ export function genGrid() {
     }
   }
 
-  // Step 3: guarantee at least 5 of each Norwegian char
-  ["Æ", "Ø", "Å"].forEach(ch => {
+  // Step 4: guarantee at least 5 of each Norwegian char
+  SPECIAL_CHARS.forEach(ch => {
     let count = grid.filter(l => l === ch).length;
     if (count >= 5) return;
     const candidates = [];
     grid.forEach((l, i) => {
       if (l && "AEIOU".includes(l) && !usedPairs.has(`${i}-${i + 1}`) && !protectedIndices.has(i)) candidates.push(i);
     });
-    shuffle(candidates);
+    shuffle(candidates, rng);
     for (let i = 0; i < candidates.length && count < 5; i++) {
       grid[candidates[i]] = ch;
       count++;
@@ -161,13 +209,29 @@ export function adj(a, b) {
   return rowDiff <= 1 && colDiff <= 1;
 }
 
+// Raw letter value of a word (rare letters like Æ/Ø/Å/W/Z already score high).
 export function wordScore(word) {
   return word.split("").reduce((s, c) => s + (LETTER_SCORES[c] || 1), 0);
 }
 
+// Length component, escalating so longer words reliably beat short rare-letter ones.
+export function lengthBonus(length) {
+  if (length >= 8) return LONG_WORD_BONUS;
+  return LENGTH_BONUS[length] || 0;
+}
+
+// Extra reward for the Norwegian special characters æ/ø/å.
+export function specialBonus(word) {
+  let n = 0;
+  for (const ch of word.toUpperCase()) {
+    if (SPECIAL_CHARS.includes(ch)) n++;
+  }
+  return n * SPECIAL_CHAR_BONUS;
+}
+
+// Bonus for matching one of the hidden "bonus words" (drives the bonus chime).
 export function calculateBonus(word) {
   const wordLower = word.toLowerCase();
-  const lengthBonus = word.length >= 8 ? 5 : 0;
   const minRootLength = 3; // Minimum length for a bonus word to be considered a "root"
 
   const hasBonusMatch = BONUS_WORDS.some(bw => {
@@ -180,8 +244,23 @@ export function calculateBonus(word) {
     ) && Math.abs(wordLower.length - bwLower.length) <= 3;
   });
 
-  // Always return the length bonus plus the hidden word bonus if a match was found
-  return lengthBonus + (hasBonusMatch ? 10 : 0);
+  return hasBonusMatch ? HIDDEN_WORD_BONUS : 0;
+}
+
+// Full score breakdown for a word: letters + length + special chars + hidden bonus.
+export function scoreWord(word) {
+  const letters = wordScore(word);
+  const length = lengthBonus(word.length);
+  const special = specialBonus(word);
+  const hidden = calculateBonus(word);
+  return {
+    letters,
+    length,
+    special,
+    hidden,
+    total: letters + length + special + hidden,
+    isHiddenBonus: hidden > 0,
+  };
 }
 
 export async function validateWord(word) {

@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { wordScore, adj, genGrid, calculateBonus } from './gameLogic';
+import {
+  wordScore,
+  adj,
+  genGrid,
+  dailyGrid,
+  calculateBonus,
+  scoreWord,
+  lengthBonus,
+  specialBonus,
+  LONG_WORD_BONUS,
+  SPECIAL_CHAR_BONUS,
+} from './gameLogic';
 import BONUS_WORDS from './bonus_words.json';
 
 describe('WordGame Logic Engine', () => {
@@ -43,6 +54,39 @@ describe('WordGame Logic Engine', () => {
       expect(grid.length).toBe(100);
       expect(grid.every(cell => cell !== null)).toBe(true);
     });
+
+    it('dailyGrid is deterministic for a given day and differs across days', () => {
+      const a1 = dailyGrid('2026-06-06');
+      const a2 = dailyGrid('2026-06-06');
+      const b = dailyGrid('2026-06-07');
+      expect(a1).toEqual(a2); // same day -> identical shared board
+      expect(a1).not.toEqual(b); // new day -> new board
+    });
+  });
+
+  describe('scoreWord()', () => {
+    it('rewards longer words over short rare-letter words (KÅRET beats FØD)', () => {
+      // The reported bug: FØD (10 from rare letters) used to beat KÅRET (9).
+      expect(scoreWord('KÅRET').total).toBeGreaterThan(scoreWord('FØD').total);
+    });
+
+    it('adds an escalating length bonus', () => {
+      expect(lengthBonus(3)).toBe(0);
+      expect(lengthBonus(5)).toBeGreaterThan(lengthBonus(4));
+      expect(lengthBonus(8)).toBe(LONG_WORD_BONUS);
+      expect(lengthBonus(12)).toBe(LONG_WORD_BONUS);
+    });
+
+    it('adds a bonus for each æ/ø/å but not for plain letters', () => {
+      expect(specialBonus('SKAL')).toBe(0);
+      expect(specialBonus('SKÅL')).toBe(SPECIAL_CHAR_BONUS);
+      expect(specialBonus('ÆØÅ')).toBe(3 * SPECIAL_CHAR_BONUS);
+    });
+
+    it('total equals letters + length + special + hidden', () => {
+      const s = scoreWord('KÅRET');
+      expect(s.total).toBe(s.letters + s.length + s.special + s.hidden);
+    });
   });
 
   describe('BONUS_WORDS Integration', () => {
@@ -52,48 +96,28 @@ describe('WordGame Logic Engine', () => {
       expect(typeof BONUS_WORDS[0]).toBe('string');
     });
 
-    it('calculates the +10 bonus for exact bonus words, plus +5 if long', () => {
-      // Find a bonus word that is >= 8 chars for full bonus test
-      const longBonusWord = BONUS_WORDS.find(w => w.length >= 8) || "ABSOLUTT"; // Fallback if none found
-      expect(calculateBonus(longBonusWord)).toBe(15); // 10 (exact) + 5 (long)
-
-      // Find a bonus word that is < 8 chars for basic bonus test
-      const shortBonusWord = BONUS_WORDS.find(w => w.length < 8) || "HELSE"; // Fallback
-      expect(calculateBonus(shortBonusWord)).toBe(10); // 10 (exact)
+    it('awards the hidden-word bonus for exact bonus words (long or short)', () => {
+      const longBonusWord = BONUS_WORDS.find(w => w.length >= 8) || "ABSOLUTT";
+      const shortBonusWord = BONUS_WORDS.find(w => w.length < 8) || "HELSE";
+      // calculateBonus is now ONLY the hidden-word bonus; length is handled by lengthBonus.
+      expect(calculateBonus(longBonusWord)).toBe(10);
+      expect(calculateBonus(shortBonusWord)).toBe(10);
     });
 
-    it('awards a +10 bonus for inflected forms of bonus words (root match)', () => {
-      // Use a word long enough to trigger the root matching thresholds
+    it('awards the hidden-word bonus for inflected forms (root match)', () => {
       const root = BONUS_WORDS.find(w => w.length >= 5) || BONUS_WORDS[0];
-      const inflected = root + "E"; 
-
-      // Base bonus (10) + length bonus (5) if result is >= 8 chars
-      const hasLenBonus = inflected.length >= 8;
-      const expectedBonus = hasLenBonus ? 15 : 10;
-
+      const inflected = root + "E";
       expect(BONUS_WORDS).toContain(root);
-      expect(calculateBonus(inflected)).toBe(expectedBonus);
+      expect(calculateBonus(inflected)).toBe(10);
     });
 
-    it('validates total points for "naturlig" vs "naturlige"', () => {
-      // "NATURLIG" (8 chars): N(1)+A(1)+T(1)+U(3)+R(1)+L(1)+I(1)+G(3) = 12
-      // Bonus: 10 (root) + 5 (len >= 8) = 15. Total = 27.
-      const word1 = "NATURLIG";
-      const totalScore1 = wordScore(word1) + calculateBonus(word1);
-      
-      // "NATURLIGE" (9 chars): Previous 12 + E(1) = 13
-      // Bonus: 10 (root) + 5 (len >= 8) = 15. Total = 28.
-      const word2 = "NATURLIGE";
-      const totalScore2 = wordScore(word2) + calculateBonus(word2);
-
-      expect(totalScore1).toBe(27);
-      expect(totalScore2).toBe(28);
-      expect(totalScore2).toBeGreaterThan(totalScore1);
+    it('gives no hidden-word bonus for words not in the list', () => {
+      expect(calculateBonus('LANGTORD')).toBe(0);
     });
 
-    it('awards a +5 bonus for long words not in the hidden list', () => {
-      const longWord = 'LANGTORD'; // 8 characters
-      expect(calculateBonus(longWord)).toBe(5);
+    it('a longer word always scores higher than its shorter prefix', () => {
+      // "NATURLIGE" should beat "NATURLIG" thanks to the extra letter + length curve.
+      expect(scoreWord('NATURLIGE').total).toBeGreaterThan(scoreWord('NATURLIG').total);
     });
   });
 });

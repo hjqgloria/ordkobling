@@ -36,13 +36,29 @@ export function PlayList({ found }) {
   );
 }
 
+function Leaderboard({ title, entries }) {
+  if (!entries?.length) return null;
+  return (
+    <div className="mb-4 p-3 bg-black/20 rounded-xl border border-white/5">
+      <p className="text-[10px] font-bold text-[#888] uppercase tracking-tighter mb-2 text-left">{title}</p>
+      {entries.map((entry, i) => (
+        <div key={i} className="flex justify-between text-[11px] border-b border-white/5 py-1 last:border-0">
+          <span className="text-paper truncate mr-2">{i + 1}. {entry.name}</span>
+          <span className="text-bonus font-mono">{entry.score}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function GameStatus({
   phase,
   score,
   highScore,
   playerName,
-  leaderboard,
-  isNewRecord,
+  dailyLeaderboard,
+  allTimeLeaderboard,
+  submitted,
   timeLeft,
   msg,
   msgType,
@@ -57,16 +73,16 @@ export default function GameStatus({
   setPlayerName
 }) {
   const btnClass = "bg-paper text-ink rounded-full px-7 py-3 text-[15px] font-bold transition-transform active:scale-95 cursor-pointer";
-  const btnSecondaryClass = "bg-transparent text-[#888] border border-[#444] rounded-full px-5 py-3 text-[13px] transition-colors hover:bg-white/5 cursor-pointer";
 
   if (phase === "start") {
     return (
       <div className="bg-[#1e1e1e] rounded-2xl p-6 max-w-[340px] text-center text-[#ccc] mt-4">
+        <p className="text-[11px] font-bold text-[#fbbf24] uppercase tracking-widest mb-2">Dagens brett</p>
         <p className="text-[15px] leading-relaxed mb-2.5">
-          Koble bokstavene ved å dra linjer – på kryss og tvers. Finn lange bonusord for ekstra poeng!
+          Alle spiller det samme brettet i dag! Koble bokstavene ved å dra linjer – på kryss og tvers. Lange ord og æ/ø/å gir ekstra poeng.
         </p>
         <p className="text-[13px] text-[#888] mb-5">
-          Minst 3 bokstaver · 8+ bokstaver gir bonus · 2 minutter
+          Minst 3 bokstaver · lengre ord gir mer · nytt brett hver dag
         </p>
         <button onClick={onStart} className={btnClass}>Start spill</button>
       </div>
@@ -80,9 +96,9 @@ export default function GameStatus({
         <div className="text-[11px] text-[#fbbf24] font-bold tracking-widest mb-2">REKORD: {highScore}</div>
         <p className="text-[34px] font-extrabold text-bonus mb-2">{score} poeng</p>
         
-        {isNewRecord && (
+        {score > 0 && !submitted && (
           <div className="mb-4 animate-in fade-in zoom-in duration-300">
-            <p className="text-[#fbbf24] text-xs font-bold mb-2 uppercase">Ny global rekord?</p>
+            <p className="text-[#fbbf24] text-xs font-bold mb-2 uppercase">Send inn til dagens toppliste</p>
             <form onSubmit={(e) => {
               e.preventDefault();
               submitToLeaderboard(playerName || e.target.playerName.value);
@@ -102,19 +118,14 @@ export default function GameStatus({
           </div>
         )}
 
+        {submitted && (
+          <p className="text-bonus text-xs font-bold mb-4">Sendt inn! ★</p>
+        )}
+
         <p className="text-sm text-[#888] mb-3.5">{found.length} ord funnet</p>
 
-        {leaderboard?.length > 0 && (
-          <div className="mb-4 p-3 bg-black/20 rounded-xl border border-white/5">
-            <p className="text-[10px] font-bold text-[#888] uppercase tracking-tighter mb-2 text-left">Globale Toppscore</p>
-            {leaderboard.map((entry, i) => (
-              <div key={i} className="flex justify-between text-[11px] border-b border-white/5 py-1 last:border-0">
-                <span className="text-paper truncate mr-2">{i+1}. {entry.name}</span>
-                <span className="text-bonus font-mono">{entry.score}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <Leaderboard title="Dagens toppliste" entries={dailyLeaderboard} />
+        <Leaderboard title="Tidenes beste" entries={allTimeLeaderboard} />
 
         {found.length > 0 && (
           <div className="mb-4 max-h-32 overflow-y-auto text-left opacity-60">
@@ -126,8 +137,7 @@ export default function GameStatus({
           </div>
         )}
         <div className="flex gap-2.5 justify-center">
-          <button onClick={() => startGame(false)} className={btnClass}>Spill igjen</button>
-          <button onClick={() => startGame(true)} className={btnSecondaryClass}>Nytt rutenett</button>
+          <button onClick={() => startGame()} className={btnClass}>Spill igjen</button>
         </div>
       </div>
     );
