@@ -59,6 +59,7 @@ export default function GameStatus({
   dailyLeaderboard,
   allTimeLeaderboard,
   submitted,
+  isNewRecord,
   timeLeft,
   msg,
   msgType,
@@ -96,9 +97,9 @@ export default function GameStatus({
         <div className="text-[11px] text-[#fbbf24] font-bold tracking-widest mb-2">REKORD: {highScore}</div>
         <p className="text-[34px] font-extrabold text-bonus mb-2">{score} poeng</p>
         
-        {score > 0 && !submitted && (
+        {isNewRecord && !submitted && (
           <div className="mb-4 animate-in fade-in zoom-in duration-300">
-            <p className="text-[#fbbf24] text-xs font-bold mb-2 uppercase">Send inn til dagens toppliste</p>
+            <p className="text-[#fbbf24] text-xs font-bold mb-2 uppercase">Ny dagsrekord! Send inn til dagens toppliste</p>
             <form onSubmit={(e) => {
               e.preventDefault();
               submitToLeaderboard(playerName || e.target.playerName.value);

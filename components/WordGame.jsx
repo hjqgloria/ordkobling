@@ -53,6 +53,7 @@ export default function WordGame() {
         dailyLeaderboard={gameState.dailyLeaderboard}
         allTimeLeaderboard={gameState.allTimeLeaderboard}
         submitted={gameState.submitted}
+        isNewRecord={gameState.isNewRecord}
         timeLeft={gameState.timeLeft}
         msg={gameState.msg}
         msgType={gameState.msgType}
