@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
-import redis from "@/lib/redis";
+import { Hono } from "hono";
+import redis from "../lib/redis.js";
+
+const api = new Hono();
 
 const ALLTIME_KEY = "ordkobling:leaderboard";
 const DAILY_PREFIX = "ordkobling:daily:";
-const DAILY_TTL = 60 * 60 * 48; // 48h — the per-day key only needs to outlive its own day
+const DAILY_TTL = 60 * 60 * 48; // 48h
 const TOP_N = 10;
 
-// Current puzzle day (YYYY-MM-DD) in Europe/Oslo, computed server-side so the
-// client cannot post into a different day's board.
 function osloDateKey(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Oslo",
@@ -21,7 +21,6 @@ function dailyKey(date = new Date()) {
   return `${DAILY_PREFIX}${osloDateKey(date)}`;
 }
 
-// Minimal profanity list — extend as needed. Stored here to avoid extra dependencies.
 const PROFANITY = [
   'fuck', 'shit', 'bitch', 'asshole', 'damn', 'bollocks', 'arse', 'crap'
 ];
@@ -32,7 +31,6 @@ function containsProfanity(s) {
   return PROFANITY.some(w => lower.includes(w));
 }
 
-// Read the top entries of a sorted set (highest first) as [{ name, score }].
 async function topScores(key) {
   let result;
   if (typeof redis.zrange === 'function') {
@@ -47,7 +45,6 @@ async function topScores(key) {
   return out;
 }
 
-// Add a score keeping only the player's highest (ZADD ... GT).
 async function addHighScore(key, score, member) {
   if (typeof redis.zadd === 'function') {
     await redis.zadd(key, { gt: true }, { score, member });
@@ -64,86 +61,115 @@ async function expire(key, seconds) {
   }
 }
 
-export async function GET() {
+// Validation endpoint handler
+api.get("/validate", async (c) => {
+  const word = c.req.query("word")?.toLowerCase().trim();
+
+  if (!word || word.length < 2 || word.length > 20 || !/^[a-zæøå]+$/i.test(word)) {
+    return c.json({ valid: false });
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const API_BASE = process.env.DICTIONARY_API_URL || 'https://ord.uib.no/api/articles';
+
+    const res = await fetch(`${API_BASE}?w=${encodeURIComponent(word)}&dict=bm,nn&scope=ei`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    const data = await res.json();
+    const hasBm = Array.isArray(data.articles?.bm) && data.articles.bm.length > 0;
+    const hasNn = Array.isArray(data.articles?.nn) && data.articles.nn.length > 0;
+    return c.json({ valid: hasBm || hasNn });
+  } catch (error) {
+    console.error('Dictionary validation error:', error);
+    return c.json({ valid: false });
+  }
+});
+
+// Leaderboard GET handler
+api.get("/leaderboard", async (c) => {
   try {
     const date = osloDateKey();
     const [daily, allTime] = await Promise.all([
       topScores(dailyKey()),
       topScores(ALLTIME_KEY),
     ]);
-    return NextResponse.json({ date, daily, allTime });
+    return c.json({ date, daily, allTime });
   } catch (error) {
     console.error("Leaderboard GET error", error);
-    return NextResponse.json({ error: "Failed to load leaderboard" }, { status: 500 });
+    return c.json({ error: "Failed to load leaderboard" }, 500);
   }
-}
+});
 
-export async function POST(req) {
+// Leaderboard POST handler
+api.post("/leaderboard", async (c) => {
   try {
-    const body = await req.json();
+    const body = await c.req.json();
 
-    // Basic extraction
     let rawName = String(body.name || "").trim();
     const score = Number(body.score);
 
-    // Validate score is a finite positive integer and within a sane bound
     if (!Number.isFinite(score) || score <= 0 || score > 1000000) {
-      return NextResponse.json({ error: "Invalid score" }, { status: 400 });
+      return c.json({ error: "Invalid score" }, 400);
     }
 
-    // Simple rate limiting per IP: allow up to 10 submissions per minute
-    const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown').split(',')[0].trim();
+    const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const ip = clientIp.split(',')[0].trim();
     const rateKey = `rate:${ip}`;
     try {
-      let c;
+      let count;
       if (typeof redis.incr === 'function') {
-        c = await redis.incr(rateKey);
-        if (c === 1) await expire(rateKey, 60);
+        count = await redis.incr(rateKey);
+        if (count === 1) await expire(rateKey, 60);
       } else {
-        c = await redis.sendCommand(['INCR', rateKey]);
-        if (c === 1) await redis.sendCommand(['EXPIRE', rateKey, '60']);
+        count = await redis.sendCommand(['INCR', rateKey]);
+        if (count === 1) await redis.sendCommand(['EXPIRE', rateKey, '60']);
       }
-      if (c > 10) {
-        return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+      if (count > 10) {
+        return c.json({ error: 'Rate limit exceeded' }, 429);
       }
     } catch (e) {
-      // If Redis rate-limiter fails, continue but log
       console.warn('Rate limiter failed', e);
     }
 
-    // Sanitize name: normalize, remove control characters and limit allowed chars to letters, numbers, space, - _ .
     try {
       rawName = rawName.normalize('NFKC');
     } catch (e) {}
-    // Remove newline/control chars
+
     let name = rawName.replace(/\s+/g, ' ').replace(/[\p{C}]/gu, '').trim();
-    // Keep only reasonable characters
     name = name.replace(/[^\p{L}\p{N}\-_. ]+/gu, '');
-    // Collapse multiple spaces
     name = name.replace(/\s{2,}/g, ' ');
-    // Enforce max length
-    if (!name) return NextResponse.json({ error: 'Invalid name' }, { status: 400 });
+    if (!name) return c.json({ error: 'Invalid name' }, 400);
     name = name.slice(0, 32);
 
-    // Defensive: final check
-    if (name.length === 0) return NextResponse.json({ error: 'Invalid name' }, { status: 400 });
+    if (name.length === 0) return c.json({ error: 'Invalid name' }, 400);
 
     if (containsProfanity(name)) {
-      return NextResponse.json({ error: "Name contains restricted content" }, { status: 400 });
+      return c.json({ error: "Name contains restricted content" }, 400);
     }
 
-    // Treat "User" and "user" as the same person for the score key/member.
     const lookupName = name.toLowerCase();
-
-    // Daily board (resets each Oslo day via key name + TTL) and all-time best board.
     const dKey = dailyKey();
     await addHighScore(dKey, score, lookupName);
     await expire(dKey, DAILY_TTL);
     await addHighScore(ALLTIME_KEY, score, lookupName);
 
-    return NextResponse.json({ ok: true, name });
+    return c.json({ ok: true, name });
   } catch (error) {
     console.error("Leaderboard POST error", error);
-    return NextResponse.json({ error: "Failed to submit score" }, { status: 500 });
+    return c.json({ error: "Failed to submit score" }, 500);
   }
-}
+});
+
+import { handle } from "hono/vercel";
+
+// Create main app supporting both /api prefix and root paths
+const app = new Hono();
+app.route("/api", api);
+app.route("/", api);
+
+export const handler = handle(app);
+export default app;

@@ -4,7 +4,8 @@ A professional Norwegian word connection game built with modern web technologies
 ## Tech Stack & Architecture
 
 - **Runtime**: [Node.js v24](https://nodejs.org/) (managed via `fnm`)
-- **Framework**: Next.js 16 (App Router)
+- **Frontend Framework**: [Vite 8](https://vitejs.dev/) + React 19 (SPA)
+- **API Framework**: [Hono](https://hono.dev/)
 - **Styling**: Tailwind CSS v4 (using the new CSS-first engine)
 - **State Management**: React 19 Hooks (`useState`, `useEffect`, `useRef`, `useCallback`)
 - **Testing**: Vitest and JSDOM
@@ -21,17 +22,15 @@ A professional Norwegian word connection game built with modern web technologies
   - **Score Validation**: Only improved or new scores are recorded; ties preserve the first submission.
 
 ## Project Structure
-- `/app`: App Router pages and API routes.
-  - `page.js`: Main game UI.
-  - `layout.js`: Root layout with error boundary.
-  - `api/validate/route.js`: Dictionary validation via Ordbøkene.
-  - `api/leaderboard/route.js`: Leaderboard GET/POST endpoints (Redis-backed).
+- `/src`: Application entry point (`main.jsx`, `index.css`).
+- `/api`: Hono API router for `/api/validate` and `/api/leaderboard`.
 - `/components`: React UI components and game logic.
   - `WordGame.jsx`, `GameBoard.jsx`, `GameStatus.jsx`: Core game UI.
   - `useGameState.js`: Central game hook (scoring, validation, leaderboard integration).
 - `/lib`:
   - `redis.js`: Upstash Redis client initialization (SDK or REST fallback).
-- `/__tests__`: Unit test suites for scoring, adjacency, and grid generation.
+- `index.html`: Vite HTML entry point.
+- `server.mjs`: Standalone production server serving API + static frontend.
 
 ## API Endpoints
 
