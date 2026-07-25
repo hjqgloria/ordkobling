@@ -34,11 +34,21 @@ export function useGameState() {
 
   const playSound = useCallback((audioRef) => {
     if (!isSoundOn || !audioRef.current) return;
-    // Resetting currentTime is crucial for iOS to restart the sound immediately
-    audioRef.current.currentTime = 0;
-    audioRef.current.play().catch((err) => {
-      console.warn("Audio playback blocked or failed:", err);
-    });
+    try {
+      const sound = audioRef.current.cloneNode();
+      sound.currentTime = 0;
+      sound.play().catch((err) => {
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch((e) => console.warn("Audio playback blocked:", e));
+        }
+      });
+    } catch (e) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch((err) => console.warn("Audio playback blocked:", err));
+      }
+    }
   }, [isSoundOn]);
 
   useEffect(() => {
