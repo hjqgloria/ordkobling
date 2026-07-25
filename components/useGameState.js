@@ -30,6 +30,7 @@ export function useGameState() {
   const svgRef = useRef(null);
   const msgTimer = useRef(null);
   const validationCache = useRef(new Map());
+const pathRef = useRef(path);
   const hasUnlockedAudio = useRef(false);
 
   const playSound = useCallback((audioRef) => {
@@ -261,28 +262,37 @@ export function useGameState() {
 
   // Update the path for a cell the pointer moved over. Extracted from
   // onPointerMove so the path logic can be unit-tested without an SVG event.
+  // Keep pathRef in sync for the memoized onMove callback
+  useEffect(() => { pathRef.current = path; }, [path]);
+
   const onMove = useCallback((idx) => {
     // Ignore if out of bounds or same as the current last cell in path
-    if (idx < 0 || idx === path[path.length - 1]) return;
+    if (idx < 0 || idx === pathRef.current[pathRef.current.length - 1]) return;
 
-    if (path.includes(idx)) {
-      const existing = path.indexOf(idx);
+    if (pathRef.current.includes(idx)) {
+      const existing = pathRef.current.indexOf(idx);
       // Allow backtracking to shorten the path
-      setPath(path.slice(0, existing + 1));
+      setPath(pathRef.current.slice(0, existing + 1));
       return;
     }
 
-    if (path.length > 0 && !adj(path[path.length - 1], idx)) return;
-    setPath([...path, idx]);
-  }, [path]);
+    if (pathRef.current.length > 0 && !adj(pathRef.current[pathRef.current.length - 1], idx)) return;
+    setPath([...pathRef.current, idx]);
+  }, []);
 
+  // Throttle pointerPos updates to ~5fps to avoid constant re-renders during drag
+  const pointerLastUpdate = useRef(0);
   const onPointerMove = (e) => {
     if (!dragging.current || phase !== "play") return;
     if (e.cancelable) e.preventDefault();
     const svg = svgRef.current;
     if (!svg) return;
     const pt = getSVGPoint(svg, e);
-    setPointerPos(pt);
+    const now = Date.now();
+    if (now - pointerLastUpdate.current > 200) {
+      setPointerPos(pt);
+      pointerLastUpdate.current = now;
+    }
     onMove(cellFromPoint(pt.x, pt.y));
   };
 

@@ -230,18 +230,25 @@ export function specialBonus(word) {
 }
 
 // Bonus for matching one of the hidden "bonus words" (drives the bonus chime).
+// Uses a 70% match ratio to allow Norwegian word forms (er/en/et)
+// while preventing short words from getting undeserved bonus points.
 export function calculateBonus(word) {
   const wordLower = word.toLowerCase();
-  const minRootLength = 3; // Minimum length for a bonus word to be considered a "root"
 
   const hasBonusMatch = BONUS_WORDS.some(bw => {
     const bwLower = bw.toLowerCase();
-    if (bwLower === wordLower) return true;
+    if (bwLower === wordLower) return true; // exact match always works
 
-    return (
-      (bwLower.length >= minRootLength && wordLower.startsWith(bwLower)) ||
-      (wordLower.length >= minRootLength && bwLower.startsWith(wordLower))
-    ) && Math.abs(wordLower.length - bwLower.length) <= 3;
+    // Must be a prefix/suffix (handles Norwegian word forms like -en, -er, -et)
+    const isPrefix = wordLower.startsWith(bwLower) || bwLower.startsWith(wordLower);
+    if (!isPrefix) return false;
+
+    // Require the shorter word to be at least 70% of the longer word
+    const shorter = Math.min(wordLower.length, bwLower.length);
+    const longer = Math.max(wordLower.length, bwLower.length);
+    const matchRatio = shorter / longer;
+
+    return matchRatio >= 0.7;
   });
 
   return hasBonusMatch ? HIDDEN_WORD_BONUS : 0;
