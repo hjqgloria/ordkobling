@@ -264,9 +264,15 @@ export function scoreWord(word) {
 }
 
 export async function validateWord(word) {
-  const res = await fetch(`/api/validate?word=${encodeURIComponent(word)}`);
-  const data = await res.json();
-  return data.valid;
+  try {
+    const res = await fetch(`/api/validate?word=${encodeURIComponent(word)}`);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return Boolean(data && data.valid);
+  } catch (err) {
+    console.error("validateWord error:", err);
+    return false;
+  }
 }
 
 export function getSVGPoint(svg, e) {
