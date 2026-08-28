@@ -1,11 +1,14 @@
 function readPackage(pkg, context) {
-  // Force postcss to at least 8.5.15 for ANY package that uses a version lower than that.
-  // This ensures we patch the CVE without blocking future updates > 8.5.15.
-  if (pkg.dependencies && pkg.dependencies.postcss) {
-    const currentVersion = pkg.dependencies.postcss;
-    // Only override if the version is specifically in the 8.4.x range or lower
-    if (currentVersion.startsWith('8.4') || currentVersion.startsWith('^8.4') || currentVersion.startsWith('~8.4')) {
-      pkg.dependencies.postcss = '^8.5.15';
+  // Force all sub-dependencies to patched versions across the board
+  if (pkg.dependencies) {
+    if (pkg.dependencies.postcss && pkg.dependencies.postcss !== '8.5.26') {
+      pkg.dependencies.postcss = '8.5.26';
+    }
+    if (pkg.dependencies.undici && pkg.dependencies.undici !== '7.29.0') {
+      pkg.dependencies.undici = '7.29.0';
+    }
+    if (pkg.dependencies.nanoid && pkg.dependencies.nanoid !== '3.3.18') {
+      pkg.dependencies.nanoid = '3.3.18';
     }
   }
   return pkg;
