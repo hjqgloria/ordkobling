@@ -13,7 +13,7 @@
   "dependencies": {
     "@hono/node-server": "^2.0.11",
     "@upstash/redis": "^1.38.0",
-    "hono": "^4.12.34",
+    "hono": "^4.13.7",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
