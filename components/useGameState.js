@@ -154,13 +154,22 @@ const pathRef = useRef(path);
 
     setChecking(true);
     try {
-      const ok = await validateWord(w.toLowerCase());
-      validationCache.current.set(w, ok);
+      const result = await validateWord(w.toLowerCase());
+      if (result === "unavailable") {
+        // Dictionary API down: don't count as a wrong word, don't cache.
+        // Release the drawn word so the board doesn't stay connected.
+        setPath([]);
+        showMsg("Ordbøkene utilgjengelig – vent litt og kom tilbake senere", "bad");
+        setChecking(false);
+        return;
+      }
+      validationCache.current.set(w, result);
       if (validationCache.current.size > 500) {
         validationCache.current.delete(validationCache.current.keys().next().value);
       }
-      handleValidationResult(w, ok);
+      handleValidationResult(w, result);
     } catch {
+      setPath([]);
       showMsg("Feil – prøv igjen", "bad");
     }
     setChecking(false);

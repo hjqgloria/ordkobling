@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import redis from "../lib/redis.js";
+import { checkWord } from "../lib/dictionary.js";
 
 const api = new Hono();
 
@@ -61,7 +62,9 @@ async function expire(key, seconds) {
   }
 }
 
-// Validation endpoint handler
+// Validation endpoint handler. Delegates to the circuit breaker in
+// lib/dictionary.js so an upstream outage fails fast instead of running
+// the full retry cycle on every lookup.
 api.get("/validate", async (c) => {
   const word = c.req.query("word")?.toLowerCase().trim();
 
@@ -69,24 +72,14 @@ api.get("/validate", async (c) => {
     return c.json({ valid: false });
   }
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const API_BASE = process.env.DICTIONARY_API_URL || 'https://ord.uib.no/api/articles';
-
-    const res = await fetch(`${API_BASE}?w=${encodeURIComponent(word)}&dict=bm,nn&scope=ei`, {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    const data = await res.json();
-    const hasBm = Array.isArray(data.articles?.bm) && data.articles.bm.length > 0;
-    const hasNn = Array.isArray(data.articles?.nn) && data.articles.nn.length > 0;
-    return c.json({ valid: hasBm || hasNn });
-  } catch (error) {
-    console.error('Dictionary validation error:', error);
-    return c.json({ valid: false });
+  const result = await checkWord(word);
+  if (result.status === 'ok') {
+    return c.json({ valid: result.valid });
   }
+
+  // Dictionary is unavailable - do NOT report the word as invalid.
+  console.error('Dictionary unavailable (circuitOpen: %s)', result.circuitOpen);
+  return c.json({ valid: false, error: 'dictionary_unavailable', retryAfter: result.retryAfter }, 503);
 });
 
 // Leaderboard GET handler

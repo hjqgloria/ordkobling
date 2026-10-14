@@ -273,12 +273,13 @@ export function scoreWord(word) {
 export async function validateWord(word) {
   try {
     const res = await fetch(`/api/validate?word=${encodeURIComponent(word)}`);
+    if (res.status === 503) return "unavailable";
     if (!res.ok) return false;
     const data = await res.json();
     return Boolean(data && data.valid);
   } catch (err) {
     console.error("validateWord error:", err);
-    return false;
+    return "unavailable";
   }
 }
 
